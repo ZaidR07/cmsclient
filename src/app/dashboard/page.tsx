@@ -1,9 +1,11 @@
+"use client"
 import { useState } from 'react';
 import { 
   Home, Users, BookOpen, GraduationCap, DollarSign, 
   Award, UserCog, Settings, Menu, X, LogOut, Search
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import StudentsManagement from '@/components/Students';
 
 // Sample data for the visitors chart
 const visitorData = [
@@ -159,7 +161,8 @@ export default function Dashboard() {
           
           {activeTab === 'students' && (
             <div>
-              <p className="text-gray-500">Students management module will be displayed here.</p>
+              {/* <p className="text-gray-500">Students management module will be displayed here.</p> */}
+              <StudentsManagement/>
             </div>
           )}
           
