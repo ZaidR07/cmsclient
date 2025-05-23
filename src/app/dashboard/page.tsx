@@ -6,6 +6,9 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import StudentsManagement from '@/components/Students';
+import ExamsManagement from '@/components/Exams';
+import CoursesManagement from '@/components/Courses';
+import AdminManagement from '@/components/Admin';
 
 // Sample data for the visitors chart
 const visitorData = [
@@ -165,13 +168,28 @@ export default function Dashboard() {
               <StudentsManagement/>
             </div>
           )}
+          {activeTab === 'exams' && (
+            <div>
+              <ExamsManagement/>
+            </div>
+          )}
+          {activeTab === 'courses' && (
+            <div>
+              <CoursesManagement/>c
+            </div>
+          )}
+          {activeTab === 'admin' && (
+            <div>
+              <AdminManagement/>c
+            </div>
+          )}
           
-          {activeTab !== 'dashboard' && activeTab !== 'students' && (
+          {/* {activeTab !== 'dashboard' && activeTab !== 'students' && (
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h2 className="text-lg font-semibold mb-2">{sidebarItems.find(item => item.value === activeTab)?.label} Module</h2>
               <p className="text-gray-500">This module is under development.</p>
             </div>
-          )}
+          )} */}
         </main>
       </div>
     </div>
