@@ -1,183 +1,156 @@
 "use client";
-import { useState, useEffect } from 'react';
-import { 
-  Search, 
-  Filter, 
-  Download, 
-  Plus, 
-  ArrowUp, 
-  ArrowDown, 
-  X, 
-  CheckCircle, 
-  FileText, 
+import { useState, useEffect, useCallback } from "react";
+import {
+  Search,
+  Plus,
+  ArrowUp,
+  ArrowDown,
+  X,
+  CheckCircle,
+  FileText,
   Award,
   Calendar,
-  Tag
-} from 'lucide-react';
-import _ from 'lodash';
+  Tag,
+} from "lucide-react";
+import _ from "lodash";
+import * as XLSX from "xlsx";
+import axios from "axios";
+import { useSelector } from "react-redux";
+import { toast } from "react-toastify";
 
-// Sample exam data
-const initialExams = [
-  {
-    exam_id: "EX001",
-    exam_name: "JavaScript Fundamentals",
-    created_date: "2023-01-15",
-    status: "active",
-    participants: [
-      { id: "STD001", name: "John Smith", score: 85, completed: true },
-      { id: "STD002", name: "Emily Johnson", score: 92, completed: true },
-      { id: "STD005", name: "David Miller", score: 78, completed: true },
-      { id: "STD007", name: "Robert Wilson", score: 65, completed: true },
-    ]
-  },
-  {
-    exam_id: "EX002",
-    exam_name: "Database Management",
-    created_date: "2023-02-10",
-    status: "active",
-    participants: [
-      { id: "STD003", name: "Michael Williams", score: 88, completed: true },
-      { id: "STD004", name: "Sarah Brown", score: 91, completed: true },
-      { id: "STD008", name: "Amanda Taylor", score: 79, completed: true },
-      { id: "STD009", name: "Thomas Anderson", score: 95, completed: true },
-    ]
-  },
-  {
-    exam_id: "EX003",
-    exam_name: "Web Design Principles",
-    created_date: "2023-03-05",
-    status: "closed",
-    participants: [
-      { id: "STD002", name: "Emily Johnson", score: 89, completed: true },
-      { id: "STD006", name: "Jessica Davis", score: 94, completed: true },
-      { id: "STD010", name: "Jennifer Martin", score: 82, completed: true },
-    ]
-  },
-  {
-    exam_id: "EX004",
-    exam_name: "Python Programming",
-    created_date: "2023-03-20",
-    status: "active",
-    participants: [
-      { id: "STD001", name: "John Smith", score: 72, completed: true },
-      { id: "STD003", name: "Michael Williams", score: 81, completed: true },
-      { id: "STD005", name: "David Miller", score: 90, completed: true },
-      { id: "STD007", name: "Robert Wilson", score: 85, completed: true },
-      { id: "STD009", name: "Thomas Anderson", score: 94, completed: true },
-    ]
-  },
-  {
-    exam_id: "EX005",
-    exam_name: "Digital Marketing Fundamentals",
-    created_date: "2023-04-10",
-    status: "active",
-    participants: [
-      { id: "STD004", name: "Sarah Brown", score: 88, completed: true },
-      { id: "STD006", name: "Jessica Davis", score: 75, completed: true },
-      { id: "STD010", name: "Jennifer Martin", score: 91, completed: true },
-    ]
-  },
-  {
-    exam_id: "EX006",
-    exam_name: "Machine Learning Basics",
-    created_date: "2023-05-01",
-    status: "closed",
-    participants: [
-      { id: "STD001", name: "John Smith", score: 76, completed: true },
-      { id: "STD005", name: "David Miller", score: 89, completed: true },
-      { id: "STD008", name: "Amanda Taylor", score: 94, completed: true },
-      { id: "STD009", name: "Thomas Anderson", score: 97, completed: true },
-    ]
-  },
-  {
-    exam_id: "EX007",
-    exam_name: "UI/UX Design",
-    created_date: "2023-05-15",
-    status: "active",
-    participants: [
-      { id: "STD002", name: "Emily Johnson", score: 92, completed: true },
-      { id: "STD004", name: "Sarah Brown", score: 85, completed: true },
-      { id: "STD006", name: "Jessica Davis", score: 90, completed: true },
-      { id: "STD010", name: "Jennifer Martin", score: 95, completed: true },
-    ]
-  },
-  {
-    exam_id: "EX008",
-    exam_name: "Mobile App Development",
-    created_date: "2023-06-01",
-    status: "active",
-    participants: [
-      { id: "STD001", name: "John Smith", score: 79, completed: true },
-      { id: "STD003", name: "Michael Williams", score: 82, completed: true },
-      { id: "STD007", name: "Robert Wilson", score: 88, completed: true },
-      { id: "STD009", name: "Thomas Anderson", score: 91, completed: true },
-    ]
-  },
-  {
-    exam_id: "EX009",
-    exam_name: "Network Security",
-    created_date: "2023-06-15",
-    status: "closed",
-    participants: [
-      { id: "STD005", name: "David Miller", score: 85, completed: true },
-      { id: "STD008", name: "Amanda Taylor", score: 90, completed: true },
-      { id: "STD009", name: "Thomas Anderson", score: 96, completed: true },
-    ]
-  },
-  {
-    exam_id: "EX010",
-    exam_name: "Cloud Computing",
-    created_date: "2023-07-01",
-    status: "active",
-    participants: [
-      { id: "STD001", name: "John Smith", score: 82, completed: true },
-      { id: "STD003", name: "Michael Williams", score: 88, completed: true },
-      { id: "STD005", name: "David Miller", score: 91, completed: true },
-      { id: "STD007", name: "Robert Wilson", score: 84, completed: true },
-      { id: "STD009", name: "Thomas Anderson", score: 95, completed: true },
-    ]
-  }
-];
+interface Option {
+  id: string;
+  value: string;
+}
+
+interface Question {
+  qno: number;
+  questionname: string;
+  options: Option[];
+  correct: string;
+}
+
+interface Exam {
+  exam_id: string;
+  exam_name: string;
+  questions: Question[];
+  status: string;
+  password: string;
+  created_date: string;
+  participants?: any[];
+}
+
+type Exams = Exam[];
 
 export default function ExamsManagement() {
-  const [exams, setExams] = useState(initialExams);
-  const [filteredExams, setFilteredExams] = useState(initialExams);
+  // State management
+  const [exams, setExams] = useState<Exams>([]);
+  const [filteredExams, setFilteredExams] = useState<Exams>([]);
+  const [excelData, setExcelData] = useState<any[]>([]);
+  const [showExcelPreview, setShowExcelPreview] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [examsPerPage] = useState(5);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortColumn, setSortColumn] = useState('exam_id');
-  const [sortDirection, setSortDirection] = useState('asc');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortColumn, setSortColumn] = useState("exam_id");
+  const [sortDirection, setSortDirection] = useState("asc");
   const [showAddForm, setShowAddForm] = useState(false);
   const [showParticipantsModal, setShowParticipantsModal] = useState(false);
-  const [currentExam, setCurrentExam] = useState(null);
-  const [participantSearchTerm, setParticipantSearchTerm] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
+  const [currentExam, setCurrentExam] = useState<Exam | null>(null);
+  const [participantSearchTerm, setParticipantSearchTerm] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState("all");
   const [newExam, setNewExam] = useState({
     exam_name: "",
+    questions: [] as Question[],
     status: "active",
-    participants: []
   });
 
-  // Filter exams when search term changes
+  const admindbstate = useSelector((state: any) => state.admin.db);
+
+  const LoadData = useCallback(async () => {
+    try {
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL}getexams`,
+        {
+          params: { dbname: admindbstate },
+        }
+      );
+
+      setExams(response.data.payload);
+      setFilteredExams(response.data.payload);
+    } catch (error) {
+      console.error("Error fetching students:", error);
+    }
+  }, [admindbstate]);
+
+  // Sample data for demonstration
+  useEffect(() => {
+    LoadData();
+  }, [LoadData]);
+
+  // Handle Excel file upload
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const data = e.target?.result;
+      const workbook = XLSX.read(data, { type: "binary" });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const parsedData = XLSX.utils.sheet_to_json(sheet);
+
+      // Process the Excel data into questions format
+      const questions = parsedData.map((row: any) => {
+        const options = [];
+        for (let i = 1; i <= 4; i++) {
+          const optionKey = `option${i}`;
+          const optionId = String.fromCharCode(64 + i); // A, B, C, D
+          if (row[optionKey]) {
+            options.push({
+              id: optionId,
+              value: row[optionKey],
+            });
+          }
+        }
+
+        return {
+          qno: row.qno || 0,
+          questionname: row.question || "",
+          options: options,
+          correct: row.correct || "",
+        };
+      });
+
+      setExcelData(parsedData); // Store raw data for preview
+      setNewExam((prev) => ({
+        ...prev,
+        questions: questions,
+      }));
+      setShowExcelPreview(true);
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  // Filter exams when search term or status changes
   useEffect(() => {
     let filtered = exams;
-    
-    // Apply status filter
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(exam => exam.status === statusFilter);
+
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((exam) => exam.status === statusFilter);
     }
-    
-    // Apply search filter
+
     if (searchTerm) {
-      filtered = filtered.filter(exam => 
-        exam.exam_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        exam.exam_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        exam.created_date.includes(searchTerm)
+      filtered = filtered.filter(
+        (exam) =>
+          exam.exam_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          exam.exam_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          exam.created_date.includes(searchTerm)
       );
     }
-    
+
     setFilteredExams(filtered);
     setCurrentPage(1);
   }, [searchTerm, exams, statusFilter]);
@@ -189,102 +162,131 @@ export default function ExamsManagement() {
   }, [sortColumn, sortDirection]);
 
   // Handle column sorting
-  const handleSort = (column) => {
+  const handleSort = (column: string) => {
     if (sortColumn === column) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
       setSortColumn(column);
-      setSortDirection('asc');
+      setSortDirection("asc");
     }
   };
 
   // Handle search input change
-  const handleSearch = (e) => {
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
   };
 
-  // Get current exams for pagination
+  // Pagination calculations
   const indexOfLastExam = currentPage * examsPerPage;
   const indexOfFirstExam = indexOfLastExam - examsPerPage;
   const currentExams = filteredExams.slice(indexOfFirstExam, indexOfLastExam);
+  const totalPages = Math.ceil(filteredExams.length / examsPerPage);
 
   // Change page
-  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
   // Open participants modal
-  const openParticipantsModal = (exam) => {
-    setCurrentExam(exam);
-    setParticipantSearchTerm('');
-    setShowParticipantsModal(true);
+  const openParticipantsModal = async (exam: Exam) => {
+    try {
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}getexamparticipants`,{
+          payload : {
+            exam_id :  exam.exam_id,
+            db : admindbstate
+          }
+        }
+      );
+
+      setCurrentExam(response.data.payload);
+      setParticipantSearchTerm("");
+      setShowParticipantsModal(true);
+    } catch (error) {
+      console.log(error);
+      setShowParticipantsModal(true);
+
+    }
   };
 
   // Filter participants in modal
-  const filteredParticipants = currentExam?.participants.filter(participant =>
-    participant.name.toLowerCase().includes(participantSearchTerm.toLowerCase()) ||
-    participant.id.toLowerCase().includes(participantSearchTerm.toLowerCase())
-  ) || [];
+  const filteredParticipants =
+    currentExam?.participants?.filter(
+      (participant: any) =>
+        participant.name
+          .toLowerCase()
+          .includes(participantSearchTerm.toLowerCase()) ||
+        participant.id
+          .toLowerCase()
+          .includes(participantSearchTerm.toLowerCase())
+    ) || [];
 
   // Handle input change for new exam form
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setNewExam({
       ...newExam,
-      [name]: value
+      [name]: value,
     });
   };
 
   // Handle form submission
-  const handleSubmit = () => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     setIsLoading(true);
-    
-    // Generate new ID
-    const newId = `EX${String(exams.length + 1).padStart(3, '0')}`;
-    
-    const examToAdd = {
-      ...newExam,
-      exam_id: newId,
-      created_date: new Date().toISOString().split('T')[0],
-      participants: []
-    };
-    
-    // Simulate API call with a delay
-    setTimeout(() => {
-      setExams([...exams, examToAdd]);
+
+    try {
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}createexam`,
+        {
+          payload: newExam,
+          db: admindbstate,
+        }
+      );
+
+      toast.success(response.data.payload?.message);
+
+      LoadData();
+    } catch (error) {
+      console.error(error);
+
+      if (error.response.data?.message) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error("Something Went Wrong");
+      }
+    } finally {
       setNewExam({
         exam_name: "",
+        questions: [],
         status: "active",
-        participants: []
       });
       setIsLoading(false);
       setShowAddForm(false);
-      setSuccessMessage('Exam added successfully!');
-      
-      // Hide success message after 3 seconds
-      setTimeout(() => {
-        setSuccessMessage('');
-      }, 3000);
-    }, 1000);
+      setExcelData([]);
+      setShowExcelPreview(false);
+    }
   };
 
   // Generate certificate for a single student
-  const generateCertificate = (examId, studentId) => {
-    console.log(`Generating certificate for student ${studentId} in exam ${examId}`);
+  const generateCertificate = (examId: string, studentId: string) => {
+    console.log(
+      `Generating certificate for student ${studentId} in exam ${examId}`
+    );
     setSuccessMessage(`Certificate generated for student ID: ${studentId}`);
-    
-    // Hide success message after 3 seconds
+
     setTimeout(() => {
-      setSuccessMessage('');
+      setSuccessMessage("");
     }, 3000);
   };
 
   // Generate certificates for all students
-  const generateAllCertificates = (examId) => {
+  const generateAllCertificates = (examId: string) => {
     console.log(`Generating certificates for all students in exam ${examId}`);
-    setSuccessMessage(`Certificates generated for all students in exam ID: ${examId}`);
-    
-    // Hide success message after 3 seconds
+    setSuccessMessage(
+      `Certificates generated for all students in exam ID: ${examId}`
+    );
+
     setTimeout(() => {
-      setSuccessMessage('');
+      setSuccessMessage("");
     }, 3000);
   };
 
@@ -301,7 +303,10 @@ export default function ExamsManagement() {
               value={searchTerm}
               onChange={handleSearch}
             />
-            <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+            <Search
+              className="absolute left-3 top-2.5 text-gray-400"
+              size={18}
+            />
           </div>
           <select
             className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -312,7 +317,7 @@ export default function ExamsManagement() {
             <option value="active">Active</option>
             <option value="closed">Closed</option>
           </select>
-          <button 
+          <button
             onClick={() => setShowAddForm(true)}
             className="flex items-center space-x-1 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
           >
@@ -321,7 +326,7 @@ export default function ExamsManagement() {
           </button>
         </div>
       </div>
-      
+
       {/* Success Message */}
       {successMessage && (
         <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg flex items-center">
@@ -329,53 +334,82 @@ export default function ExamsManagement() {
           {successMessage}
         </div>
       )}
-      
+
       {/* Exams Table */}
       <div className="overflow-x-auto">
         <table className="min-w-full bg-white border border-gray-200">
           <thead>
             <tr className="bg-gray-50">
-              <th className="py-2 px-4 border-b cursor-pointer" onClick={() => handleSort('exam_id')}>
+              <th
+                className="py-2 px-4 border-b cursor-pointer"
+                onClick={() => handleSort("exam_id")}
+              >
                 <div className="flex items-center">
                   <span>Exam ID</span>
-                  {sortColumn === 'exam_id' && (
+                  {sortColumn === "exam_id" && (
                     <span className="ml-1">
-                      {sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+                      {sortDirection === "asc" ? (
+                        <ArrowUp size={14} />
+                      ) : (
+                        <ArrowDown size={14} />
+                      )}
                     </span>
                   )}
                 </div>
               </th>
-              <th className="py-2 px-4 border-b cursor-pointer" onClick={() => handleSort('exam_name')}>
+              <th
+                className="py-2 px-4 border-b cursor-pointer"
+                onClick={() => handleSort("exam_name")}
+              >
                 <div className="flex items-center">
                   <span>Exam Name</span>
-                  {sortColumn === 'exam_name' && (
+                  {sortColumn === "exam_name" && (
                     <span className="ml-1">
-                      {sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+                      {sortDirection === "asc" ? (
+                        <ArrowUp size={14} />
+                      ) : (
+                        <ArrowDown size={14} />
+                      )}
                     </span>
                   )}
                 </div>
               </th>
-              <th className="py-2 px-4 border-b cursor-pointer" onClick={() => handleSort('created_date')}>
+              <th
+                className="py-2 px-4 border-b cursor-pointer"
+                onClick={() => handleSort("created_date")}
+              >
                 <div className="flex items-center">
                   <span>Created Date</span>
-                  {sortColumn === 'created_date' && (
+                  {sortColumn === "created_date" && (
                     <span className="ml-1">
-                      {sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+                      {sortDirection === "asc" ? (
+                        <ArrowUp size={14} />
+                      ) : (
+                        <ArrowDown size={14} />
+                      )}
                     </span>
                   )}
                 </div>
               </th>
-              <th className="py-2 px-4 border-b cursor-pointer" onClick={() => handleSort('status')}>
+              <th
+                className="py-2 px-4 border-b cursor-pointer"
+                onClick={() => handleSort("status")}
+              >
                 <div className="flex items-center">
                   <span>Status</span>
-                  {sortColumn === 'status' && (
+                  {sortColumn === "status" && (
                     <span className="ml-1">
-                      {sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+                      {sortDirection === "asc" ? (
+                        <ArrowUp size={14} />
+                      ) : (
+                        <ArrowDown size={14} />
+                      )}
                     </span>
                   )}
                 </div>
               </th>
               <th className="py-2 px-4 border-b">Participants</th>
+              <th className="py-2 px-4 border-b">Questions</th>
               <th className="py-2 px-4 border-b">Actions</th>
             </tr>
           </thead>
@@ -383,7 +417,7 @@ export default function ExamsManagement() {
             {currentExams.map((exam) => (
               <tr key={exam.exam_id} className="hover:bg-gray-50">
                 <td className="py-3 px-4 border-b">
-                  <button 
+                  <button
                     className="text-blue-500 hover:text-blue-700 font-medium"
                     onClick={() => openParticipantsModal(exam)}
                   >
@@ -391,34 +425,43 @@ export default function ExamsManagement() {
                   </button>
                 </td>
                 <td className="py-3 px-4 border-b">{exam.exam_name}</td>
-                <td className="py-3 px-4 border-b">{exam.created_date}</td>
+                <td className="py-3 px-4 border-b">{exam.createdAt}</td>
                 <td className="py-3 px-4 border-b">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    exam.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                  }`}>
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      exam.status === "active"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-gray-100 text-gray-800"
+                    }`}
+                  >
                     {exam.status.charAt(0).toUpperCase() + exam.status.slice(1)}
                   </span>
                 </td>
                 <td className="py-3 px-4 border-b">
-                  {exam.participants.length} students
+                  {exam.participants?.length || 0} students
+                </td>
+                <td className="py-3 px-4 border-b">
+                  {exam.questions.length} questions
                 </td>
                 <td className="py-3 px-4 border-b">
                   <div className="flex space-x-2">
-                    <button 
+                    <button
                       className="text-green-500 hover:text-green-700"
                       onClick={() => openParticipantsModal(exam)}
                     >
                       View
                     </button>
-                    <button className="text-blue-500 hover:text-blue-700">Edit</button>
-                    <button className="text-red-500 hover:text-red-700">Delete</button>
+
+                    <button className="text-red-500 hover:text-red-700">
+                      Delete
+                    </button>
                   </div>
                 </td>
               </tr>
             ))}
             {currentExams.length === 0 && (
               <tr>
-                <td colSpan="6" className="py-4 text-center text-gray-500">
+                <td colSpan="7" className="py-4 text-center text-gray-500">
                   No exams found.
                 </td>
               </tr>
@@ -426,19 +469,23 @@ export default function ExamsManagement() {
           </tbody>
         </table>
       </div>
-      
+
       {/* Pagination */}
       <div className="flex justify-between items-center mt-4">
         <div className="text-sm text-gray-500">
-          Showing {indexOfFirstExam + 1} to {Math.min(indexOfLastExam, filteredExams.length)} of {filteredExams.length} entries
+          Showing {indexOfFirstExam + 1} to{" "}
+          {Math.min(indexOfLastExam, filteredExams.length)} of{" "}
+          {filteredExams.length} entries
         </div>
         <div className="flex space-x-1">
-          {Array.from({ length: Math.ceil(filteredExams.length / examsPerPage) }, (_, i) => (
+          {Array.from({ length: totalPages }, (_, i) => (
             <button
               key={i}
               onClick={() => paginate(i + 1)}
               className={`px-3 py-1 border ${
-                currentPage === i + 1 ? 'bg-blue-500 text-white' : 'bg-white text-gray-500'
+                currentPage === i + 1
+                  ? "bg-blue-500 text-white"
+                  : "bg-white text-gray-500"
               } rounded`}
             >
               {i + 1}
@@ -446,24 +493,30 @@ export default function ExamsManagement() {
           ))}
         </div>
       </div>
-      
+
       {/* Add Exam Form (Modal) */}
       {showAddForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-lg">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Create New Exam</h3>
-              <button 
-                onClick={() => setShowAddForm(false)}
+              <button
+                onClick={() => {
+                  setShowAddForm(false);
+                  setExcelData([]);
+                  setShowExcelPreview(false);
+                }}
                 className="text-gray-500 hover:text-gray-700"
               >
                 <X size={20} />
               </button>
             </div>
-            
+
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Exam Name</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Exam Name
+                </label>
                 <input
                   type="text"
                   name="exam_name"
@@ -473,47 +526,130 @@ export default function ExamsManagement() {
                   placeholder="Enter exam name"
                 />
               </div>
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                <select
-                  name="status"
-                  value={newExam.status}
-                  onChange={handleInputChange}
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Upload Questions (Excel)
+                </label>
+                <input
+                  type="file"
+                  accept=".xlsx, .xls"
+                  onChange={handleFileUpload}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                >
-                  <option value="active">Active</option>
-                  <option value="closed">Closed</option>
-                </select>
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Excel format should have columns: qno, question, option1,
+                  option2, option3, option4, correct
+                </p>
               </div>
+
+              {showExcelPreview && (
+                <div className="mt-4 border rounded-lg p-3 max-h-60 overflow-y-auto">
+                  <h4 className="font-medium mb-2">
+                    Uploaded Questions Preview
+                  </h4>
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-2 py-1 text-left text-xs font-medium text-gray-500">
+                          Q.No
+                        </th>
+                        <th className="px-2 py-1 text-left text-xs font-medium text-gray-500">
+                          Question
+                        </th>
+                        <th className="px-2 py-1 text-left text-xs font-medium text-gray-500">
+                          Options
+                        </th>
+                        <th className="px-2 py-1 text-left text-xs font-medium text-gray-500">
+                          Correct
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {newExam.questions.map((q, index) => (
+                        <tr key={index}>
+                          <td className="px-2 py-1 whitespace-nowrap text-sm text-gray-500">
+                            {q.qno}
+                          </td>
+                          <td className="px-2 py-1 text-sm text-gray-500">
+                            {q.questionname}
+                          </td>
+                          <td className="px-2 py-1 text-sm text-gray-500">
+                            <ul className="list-disc list-inside">
+                              {q.options.map((opt) => (
+                                <li key={opt.id}>
+                                  {opt.id}: {opt.value}
+                                </li>
+                              ))}
+                            </ul>
+                          </td>
+                          <td className="px-2 py-1 whitespace-nowrap text-sm text-gray-500">
+                            {q.correct}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Total questions: {newExam.questions.length}
+                  </p>
+                </div>
+              )}
             </div>
-            
+
             <div className="mt-6 flex justify-end space-x-3">
               <button
-                onClick={() => setShowAddForm(false)}
+                onClick={() => {
+                  setShowAddForm(false);
+                  setExcelData([]);
+                  setShowExcelPreview(false);
+                }}
                 className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmit}
-                disabled={isLoading || !newExam.exam_name}
+                disabled={
+                  isLoading ||
+                  !newExam.exam_name ||
+                  newExam.questions.length === 0
+                }
                 className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
               >
                 {isLoading ? (
                   <div className="flex items-center">
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
                     </svg>
                     Processing...
                   </div>
-                ) : 'Create Exam'}
+                ) : (
+                  "Create Exam"
+                )}
               </button>
             </div>
           </div>
         </div>
       )}
-      
+
       {/* Participants Modal */}
       {showParticipantsModal && currentExam && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -522,29 +658,35 @@ export default function ExamsManagement() {
               <h3 className="text-lg font-semibold">
                 Exam: {currentExam.exam_name} ({currentExam.exam_id})
               </h3>
-              <button 
+              <button
                 onClick={() => setShowParticipantsModal(false)}
                 className="text-gray-500 hover:text-gray-700"
               >
                 <X size={20} />
               </button>
             </div>
-            
+
             <div className="flex items-center mb-4 text-sm">
               <div className="flex items-center mr-6">
                 <Calendar size={16} className="mr-1 text-gray-500" />
-                <span>Created: {currentExam.created_date}</span>
+                <span>Created: {currentExam.createdAt}</span>
               </div>
               <div className="flex items-center mr-6">
                 <Tag size={16} className="mr-1 text-gray-500" />
-                <span>Status: {currentExam.status.charAt(0).toUpperCase() + currentExam.status.slice(1)}</span>
+                <span>
+                  Status:{" "}
+                  {currentExam.status.charAt(0).toUpperCase() +
+                    currentExam.status.slice(1)}
+                </span>
               </div>
               <div className="flex items-center">
                 <FileText size={16} className="mr-1 text-gray-500" />
-                <span>Participants: {currentExam.participants.length}</span>
+                <span>
+                  Participants: {currentExam.participants?.length || 0}
+                </span>
               </div>
             </div>
-            
+
             <div className="mb-4 flex justify-between items-center">
               <div className="relative w-64">
                 <input
@@ -554,7 +696,10 @@ export default function ExamsManagement() {
                   value={participantSearchTerm}
                   onChange={(e) => setParticipantSearchTerm(e.target.value)}
                 />
-                <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+                <Search
+                  className="absolute left-3 top-2.5 text-gray-400"
+                  size={18}
+                />
               </div>
               <button
                 onClick={() => generateAllCertificates(currentExam.exam_id)}
@@ -564,7 +709,7 @@ export default function ExamsManagement() {
                 <span>Generate All Certificates</span>
               </button>
             </div>
-            
+
             <div className="overflow-x-auto">
               <table className="min-w-full bg-white border border-gray-200">
                 <thead>
@@ -581,17 +726,28 @@ export default function ExamsManagement() {
                     <tr key={participant.id} className="hover:bg-gray-50">
                       <td className="py-3 px-4 border-b">{participant.id}</td>
                       <td className="py-3 px-4 border-b">{participant.name}</td>
-                      <td className="py-3 px-4 border-b">{participant.score}/100</td>
                       <td className="py-3 px-4 border-b">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          participant.completed ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {participant.completed ? 'Completed' : 'Pending'}
+                        {participant.score}/100
+                      </td>
+                      <td className="py-3 px-4 border-b">
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-medium ${
+                            participant.completed
+                              ? "bg-green-100 text-green-800"
+                              : "bg-yellow-100 text-yellow-800"
+                          }`}
+                        >
+                          {participant.completed ? "Completed" : "Pending"}
                         </span>
                       </td>
                       <td className="py-3 px-4 border-b">
-                        <button 
-                          onClick={() => generateCertificate(currentExam.exam_id, participant.id)} 
+                        <button
+                          onClick={() =>
+                            generateCertificate(
+                              currentExam.exam_id,
+                              participant.id
+                            )
+                          }
                           className="flex items-center text-green-500 hover:text-green-700"
                           disabled={!participant.completed}
                         >
@@ -603,7 +759,10 @@ export default function ExamsManagement() {
                   ))}
                   {filteredParticipants.length === 0 && (
                     <tr>
-                      <td colSpan="5" className="py-4 text-center text-gray-500">
+                      <td
+                        colSpan="5"
+                        className="py-4 text-center text-gray-500"
+                      >
                         No participants found.
                       </td>
                     </tr>
@@ -611,7 +770,7 @@ export default function ExamsManagement() {
                 </tbody>
               </table>
             </div>
-            
+
             <div className="mt-6 flex justify-end">
               <button
                 onClick={() => setShowParticipantsModal(false)}

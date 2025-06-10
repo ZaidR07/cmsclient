@@ -1,224 +1,39 @@
 "use client";
-import { useState, useEffect } from 'react';
-import { Search, Filter, Download, Plus, ArrowUp, ArrowDown, X, CheckCircle } from 'lucide-react';
-import _ from 'lodash';
+import { useState, useEffect, useCallback } from "react";
+import {
+  Search,
+  Filter,
+  Download,
+  Plus,
+  ArrowUp,
+  ArrowDown,
+  X,
+  CheckCircle,
+  Upload,
+  User,
+  Trash2,
+} from "lucide-react";
 
-// Sample student data
-const initialStudents = [
-  {
-    id: "STD001",
-    formno: "F23001",
-    firstName: "John",
-    middleName: "David",
-    lastName: "Smith",
-    dob: "1998-05-15",
-    gender: "Male",
-    qualification: "High School",
-    adhaar: "123456789012",
-    address: "123 Main St, City",
-    mobile: "9876543210",
-    altnumber: "8765432109",
-    course: "Computer Science",
-    date: "2023-01-15",
-    totalPayment: 50000,
-    discount: 5000,
-    payment: 25000,
-    balance: 20000
-  },
-  {
-    id: "STD002",
-    formno: "F23002",
-    firstName: "Emily",
-    middleName: "Rose",
-    lastName: "Johnson",
-    dob: "1999-08-23",
-    gender: "Female",
-    qualification: "Bachelor",
-    adhaar: "234567890123",
-    address: "456 Park Ave, Town",
-    mobile: "8765432109",
-    altnumber: "",
-    course: "Business Management",
-    date: "2023-01-20",
-    totalPayment: 60000,
-    discount: 0,
-    payment: 30000,
-    balance: 30000
-  },
-  {
-    id: "STD003",
-    formno: "F23003",
-    firstName: "Michael",
-    middleName: "",
-    lastName: "Williams",
-    dob: "1997-12-05",
-    gender: "Male",
-    qualification: "Diploma",
-    adhaar: "345678901234",
-    address: "789 Oak St, Village",
-    mobile: "7654321098",
-    altnumber: "6543210987",
-    course: "Mechanical Engineering",
-    date: "2023-02-10",
-    totalPayment: 45000,
-    discount: 2000,
-    payment: 25000,
-    balance: 18000
-  },
-  {
-    id: "STD004",
-    formno: "F23004",
-    firstName: "Sarah",
-    middleName: "Jane",
-    lastName: "Brown",
-    dob: "2000-03-17",
-    gender: "Female",
-    qualification: "High School",
-    adhaar: "456789012345",
-    address: "101 Pine St, City",
-    mobile: "6543210987",
-    altnumber: "",
-    course: "Digital Marketing",
-    date: "2023-02-15",
-    totalPayment: 35000,
-    discount: 3000,
-    payment: 20000,
-    balance: 12000
-  },
-  {
-    id: "STD005",
-    formno: "F23005",
-    firstName: "David",
-    middleName: "Robert",
-    lastName: "Miller",
-    dob: "1996-11-29",
-    gender: "Male",
-    qualification: "Bachelor",
-    adhaar: "567890123456",
-    address: "202 Maple St, Town",
-    mobile: "5432109876",
-    altnumber: "4321098765",
-    course: "Civil Engineering",
-    date: "2023-03-01",
-    totalPayment: 55000,
-    discount: 0,
-    payment: 30000,
-    balance: 25000
-  },
-  {
-    id: "STD006",
-    formno: "F23006",
-    firstName: "Jessica",
-    middleName: "",
-    lastName: "Davis",
-    dob: "1999-07-12",
-    gender: "Female",
-    qualification: "Diploma",
-    adhaar: "678901234567",
-    address: "303 Elm St, Village",
-    mobile: "4321098765",
-    altnumber: "",
-    course: "Fashion Design",
-    date: "2023-03-05",
-    totalPayment: 40000,
-    discount: 4000,
-    payment: 20000,
-    balance: 16000
-  },
-  {
-    id: "STD007",
-    formno: "F23007",
-    firstName: "Robert",
-    middleName: "James",
-    lastName: "Wilson",
-    dob: "1997-04-22",
-    gender: "Male",
-    qualification: "High School",
-    adhaar: "789012345678",
-    address: "404 Cedar St, City",
-    mobile: "3210987654",
-    altnumber: "2109876543",
-    course: "Graphic Design",
-    date: "2023-03-10",
-    totalPayment: 38000,
-    discount: 3000,
-    payment: 20000,
-    balance: 15000
-  },
-  {
-    id: "STD008",
-    formno: "F23008",
-    firstName: "Amanda",
-    middleName: "Lee",
-    lastName: "Taylor",
-    dob: "1998-09-19",
-    gender: "Female",
-    qualification: "Bachelor",
-    adhaar: "890123456789",
-    address: "505 Birch St, Town",
-    mobile: "2109876543",
-    altnumber: "",
-    course: "Data Science",
-    date: "2023-03-15",
-    totalPayment: 65000,
-    discount: 5000,
-    payment: 30000,
-    balance: 30000
-  },
-  {
-    id: "STD009",
-    formno: "F23009",
-    firstName: "Thomas",
-    middleName: "",
-    lastName: "Anderson",
-    dob: "1996-10-31",
-    gender: "Male",
-    qualification: "Diploma",
-    adhaar: "901234567890",
-    address: "606 Aspen St, Village",
-    mobile: "1098765432",
-    altnumber: "0987654321",
-    course: "Electrical Engineering",
-    date: "2023-04-01",
-    totalPayment: 48000,
-    discount: 0,
-    payment: 24000,
-    balance: 24000
-  },
-  {
-    id: "STD010",
-    formno: "F23010",
-    firstName: "Jennifer",
-    middleName: "Marie",
-    lastName: "Martin",
-    dob: "1999-01-25",
-    gender: "Female",
-    qualification: "High School",
-    adhaar: "012345678901",
-    address: "707 Walnut St, City",
-    mobile: "0987654321",
-    altnumber: "",
-    course: "Interior Design",
-    date: "2023-04-05",
-    totalPayment: 42000,
-    discount: 2000,
-    payment: 20000,
-    balance: 20000
-  }
-];
+import _ from "lodash";
+import axios from "axios";
+import { toast, ToastContainer } from "react-toastify";
+import { useSelector } from "react-redux";
+import ExcelUpload from "./ExcelUpload";
+import { handleExcelDataUpload } from "@/util/ExcelUpload";
 
 export default function StudentsManagement() {
-  const [students, setStudents] = useState(initialStudents);
-  const [filteredStudents, setFilteredStudents] = useState(initialStudents);
+  const [students, setStudents] = useState();
+  const [filteredStudents, setFilteredStudents] = useState();
   const [currentPage, setCurrentPage] = useState(1);
   const [studentsPerPage] = useState(5);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortColumn, setSortColumn] = useState('id');
-  const [sortDirection, setSortDirection] = useState('asc');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortColumn, setSortColumn] = useState("id");
+  const [sortDirection, setSortDirection] = useState("asc");
   const [showAddForm, setShowAddForm] = useState(false);
+  const [exceluploadopen, setExcelUploadOpen] = useState(false);
   const [newStudent, setNewStudent] = useState({
-    id: "",
-    formno: "",
+    form_no: "",
+    student_id: "",
     firstName: "",
     middleName: "",
     lastName: "",
@@ -230,21 +45,35 @@ export default function StudentsManagement() {
     mobile: "",
     altnumber: "",
     course: "",
-    date: new Date().toISOString().split('T')[0],
+    date: new Date().toISOString().split("T")[0],
     totalPayment: 0,
     discount: 0,
     payment: 0,
-    balance: 0
+    balance: 0,
+    photo: null,
   });
+  const [updateID, setUpdateID] = useState("");
+  const [deleteID, setDeleteID] = useState("");
+
+  const [photoPreview, setPhotoPreview] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
+
+  const [deletemodalopen, setDeleteModalOpen] = useState(false);
+
+  const [formErrors, setFormErrors] = useState({});
+
+  //@ts-expect-error err
+  const admindbstate = useSelector((state) => state.admin.db);
 
   // Filter students when search term changes
   useEffect(() => {
     if (searchTerm) {
-      const filtered = students.filter(student => 
-        Object.values(student).some(value => 
-          value.toString().toLowerCase().includes(searchTerm.toLowerCase())
+      //@ts-expect-error err
+      const filtered = students?.filter((student) =>
+        Object.values(student).some(
+          (value) =>
+            value &&
+            value.toString().toLowerCase().includes(searchTerm.toLowerCase())
         )
       );
       setFilteredStudents(filtered);
@@ -256,17 +85,19 @@ export default function StudentsManagement() {
 
   // Sort students when sort column or direction changes
   useEffect(() => {
+    //@ts-expect-error err
     const sorted = _.orderBy(filteredStudents, [sortColumn], [sortDirection]);
+    //@ts-expect-error err
     setFilteredStudents(sorted);
   }, [sortColumn, sortDirection]);
 
   // Handle column sorting
   const handleSort = (column) => {
     if (sortColumn === column) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
       setSortColumn(column);
-      setSortDirection('asc');
+      setSortDirection("asc");
     }
   };
 
@@ -278,55 +109,214 @@ export default function StudentsManagement() {
   // Get current students for pagination
   const indexOfLastStudent = currentPage * studentsPerPage;
   const indexOfFirstStudent = indexOfLastStudent - studentsPerPage;
-  const currentStudents = filteredStudents.slice(indexOfFirstStudent, indexOfLastStudent);
+  //@ts-expect-error err
+  const currentStudents = filteredStudents?.slice(
+    indexOfFirstStudent,
+    indexOfLastStudent
+  );
 
   // Change page
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
+  // Handle photo upload
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith("image/")) {
+        alert("Please select an image file");
+        return;
+      }
+
+      // Validate file size (5MB limit)
+      if (file.size > 5 * 1024 * 1024) {
+        alert("File size should be less than 5MB");
+        return;
+      }
+
+      setNewStudent({
+        ...newStudent,
+        photo: file,
+      });
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setPhotoPreview(e.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Remove photo
+  const removePhoto = () => {
+    setNewStudent({
+      ...newStudent,
+      photo: null,
+    });
+    setPhotoPreview(null);
+  };
+
   // Handle input change for new student form
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    
-    if (name === 'totalPayment' || name === 'discount' || name === 'payment') {
-      const total = name === 'totalPayment' ? parseFloat(value) || 0 : parseFloat(newStudent.totalPayment) || 0;
-      const discount = name === 'discount' ? parseFloat(value) || 0 : parseFloat(newStudent.discount) || 0;
-      const payment = name === 'payment' ? parseFloat(value) || 0 : parseFloat(newStudent.payment) || 0;
-      
+
+    if (name === "totalPayment" || name === "discount" || name === "payment") {
+      const total =
+        name === "totalPayment"
+          ? parseFloat(value) || 0
+          : //@ts-expect-error err
+            parseFloat(newStudent.totalPayment) || 0;
+      const discount =
+        name === "discount"
+          ? parseFloat(value) || 0
+          : //@ts-expect-error err
+            parseFloat(newStudent.discount) || 0;
+
+      const payment =
+        name === "payment"
+          ? parseFloat(value) || 0
+          : //@ts-expect-error err
+            parseFloat(newStudent.payment) || 0;
+
       const balance = total - discount - payment;
-      
+
       setNewStudent({
         ...newStudent,
         [name]: value,
-        balance: balance >= 0 ? balance : 0
+        balance: balance >= 0 ? balance : 0,
       });
     } else {
       setNewStudent({
         ...newStudent,
-        [name]: value
+        [name]: value,
+      });
+    }
+
+    // Clear error when field is filled
+    if (value && formErrors[name]) {
+      setFormErrors({
+        ...formErrors,
+        [name]: null,
       });
     }
   };
 
+  // Validate form
+  const validateForm = () => {
+    const errors = {};
+    let isValid = true;
+
+    if (!newStudent.firstName.trim()) {
+      //@ts-expect-error err
+      errors.firstName = "First name is required";
+      isValid = false;
+    }
+    if (!newStudent.lastName.trim()) {
+      //@ts-expect-error err
+      errors.lastName = "Last name is required";
+      isValid = false;
+    }
+    if (!newStudent.dob) {
+      //@ts-expect-error err
+      errors.dob = "Date of birth is required";
+      isValid = false;
+    }
+    if (!newStudent.qualification.trim()) {
+      //@ts-expect-error err
+      errors.qualification = "Qualification is required";
+      isValid = false;
+    }
+    if (!newStudent.adhaar.trim()) {
+      //@ts-expect-error err
+      errors.adhaar = "Aadhaar number is required";
+      isValid = false;
+    } else if (newStudent.adhaar.length !== 12) {
+      //@ts-expect-error err
+      errors.adhaar = "Aadhaar must be 12 digits";
+      isValid = false;
+    }
+    if (!newStudent.address.trim()) {
+      //@ts-expect-error err
+      errors.address = "Address is required";
+      isValid = false;
+    }
+    if (!newStudent.mobile.trim()) {
+      //@ts-expect-error err
+      errors.mobile = "Mobile number is required";
+      isValid = false;
+    } else if (newStudent.mobile.length !== 10) {
+      //@ts-expect-error err
+      errors.mobile = "Mobile must be 10 digits";
+      isValid = false;
+    }
+    if (!newStudent.course.trim()) {
+      //@ts-expect-error err
+      errors.course = "Course is required";
+      isValid = false;
+    }
+    if (!newStudent.photo) {
+      //@ts-expect-error err
+      errors.photo = "Photo is required";
+      isValid = false;
+    }
+    if (newStudent.totalPayment <= 0) {
+      //@ts-expect-error err
+      errors.totalPayment = "Total payment must be greater than 0";
+      isValid = false;
+    }
+
+    setFormErrors(errors);
+    return isValid;
+  };
+
+  // Populating values of student
+  const HandleUpdate = (id) => {
+    //@ts-expect-error err
+    const filteredstudent = students?.filter((item) => item.student_id == id);
+
+    //@ts-expect-error
+    setNewStudent(filteredStudents[0]);
+  };
+
   // Handle form submission
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (!newStudent.student_id) {
+      if (!validateForm()) {
+        return;
+      }
+    }
+
     setIsLoading(true);
-    
-    // Generate new ID and form number
-    const newId = `STD${String(students.length + 1).padStart(3, '0')}`;
-    const newFormNo = `F${new Date().getFullYear().toString().substr(-2)}${String(students.length + 1).padStart(3, '0')}`;
-    
-    const studentToAdd = {
-      ...newStudent,
-      id: newId,
-      formno: newFormNo
-    };
-    
-    // Simulate API call with a delay
-    setTimeout(() => {
-      setStudents([...students, studentToAdd]);
+
+    try {
+      const formData = new FormData();
+
+      // Add all student data to FormData
+      Object.keys(newStudent).forEach((key) => {
+        if (key === "photo" && newStudent.photo) {
+          formData.append("photo", newStudent.photo);
+        } else {
+          formData.append(key, newStudent[key]);
+        }
+      });
+
+      formData.append("folder", admindbstate);
+      formData.append("student_id", updateID);
+
+      // Make API call with multipart/form-data
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}addupdatestudent`,
+        formData
+      );
+
+      toast.success(response.data?.message);
+      setShowAddForm(false);
+
+      // Reset form
       setNewStudent({
-        id: "",
-        formno: "",
+        form_no: "",
+        student_id: "",
         firstName: "",
         middleName: "",
         lastName: "",
@@ -338,29 +328,109 @@ export default function StudentsManagement() {
         mobile: "",
         altnumber: "",
         course: "",
-        date: new Date().toISOString().split('T')[0],
+        date: new Date().toISOString().split("T")[0],
         totalPayment: 0,
         discount: 0,
         payment: 0,
-        balance: 0
+        balance: 0,
+        photo: null,
       });
+      setPhotoPreview(null);
+      setFormErrors({});
+      LoadData();
+    } catch (error) {
+      if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error("Something Went Wrong");
+      }
+    } finally {
       setIsLoading(false);
-      setShowAddForm(false);
-      setSuccessMessage('Student added successfully!');
-      
-      // Hide success message after 3 seconds
-      setTimeout(() => {
-        setSuccessMessage('');
-      }, 3000);
-    }, 1000);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      if (!deleteID) {
+        return;
+      }
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}deletestudent`,
+        {
+          payload: {
+            db: admindbstate,
+            student_id: deleteID,
+          },
+        }
+      );
+
+      toast.success(response.data?.message);
+      LoadData();
+    } catch (error) {
+      console.error(error);
+      if (error.response.data?.message) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error("Something Went Wrong");
+      }
+    } finally {
+      setDeleteID("");
+      setDeleteModalOpen(false);
+    }
   };
 
   // Handle export to Excel
-  const exportToExcel = () => {
-    console.log('Exporting data to Excel...');
-    // In a real application, this would use a library like ExcelJS or SheetJS
-    // to generate an Excel file from the students data
+  const importToExcel = async (data) => {
+    try {
+      const students = await handleExcelDataUpload(data);
+
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}addmultiplestudents`,
+        {
+          payload: {
+            students: students,
+            db: admindbstate,
+          },
+        }
+      );
+
+      toast.success(response.data.message);
+    } catch (error) {
+      console.error(error);
+      if (error.response.data?.message) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error("Something Went Wrong");
+      }
+    }
   };
+
+  const LoadData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL}getstudents`,
+        {
+          params: { db: admindbstate },
+        }
+      );
+
+      setStudents(response.data.payload);
+      setFilteredStudents(response.data.payload);
+    } catch (error) {
+      console.error("Error fetching students:", error);
+      //@ts-expect-error err
+      setStudents([]);
+      //@ts-expect-error err
+      setFilteredStudents([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [admindbstate]);
+
+  useEffect(() => {
+    LoadData();
+  }, [LoadData]);
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-6">
@@ -375,16 +445,19 @@ export default function StudentsManagement() {
               value={searchTerm}
               onChange={handleSearch}
             />
-            <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+            <Search
+              className="absolute left-3 top-2.5 text-gray-400"
+              size={18}
+            />
           </div>
-          <button 
-            onClick={() => exportToExcel()}
+          <button
+            onClick={() => setExcelUploadOpen(true)}
             className="flex items-center space-x-1 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600"
           >
             <Download size={18} />
-            <span>Export</span>
+            <span>Import Excel</span>
           </button>
-          <button 
+          <button
             onClick={() => setShowAddForm(true)}
             className="flex items-center space-x-1 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
           >
@@ -393,96 +466,128 @@ export default function StudentsManagement() {
           </button>
         </div>
       </div>
-      
-      {/* Success Message */}
-      {successMessage && (
-        <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg flex items-center">
-          <CheckCircle size={20} className="mr-2" />
-          {successMessage}
-        </div>
-      )}
-      
+
       {/* Student Table */}
       <div className="overflow-x-auto">
         <table className="min-w-full bg-white border border-gray-200">
           <thead>
             <tr className="bg-gray-50">
-              <th className="py-2 px-4 border-b cursor-pointer" onClick={() => handleSort('id')}>
+              <th
+                className="py-2 px-4 border-b cursor-pointer"
+                onClick={() => handleSort("id")}
+              >
                 <div className="flex items-center">
                   <span>ID</span>
-                  {sortColumn === 'id' && (
+                  {sortColumn === "id" && (
                     <span className="ml-1">
-                      {sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+                      {sortDirection === "asc" ? (
+                        <ArrowUp size={14} />
+                      ) : (
+                        <ArrowDown size={14} />
+                      )}
                     </span>
                   )}
                 </div>
               </th>
-              <th className="py-2 px-4 border-b cursor-pointer" onClick={() => handleSort('formno')}>
-                <div className="flex items-center">
-                  <span>Form No</span>
-                  {sortColumn === 'formno' && (
-                    <span className="ml-1">
-                      {sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
-                    </span>
-                  )}
-                </div>
-              </th>
-              <th className="py-2 px-4 border-b cursor-pointer" onClick={() => handleSort('firstName')}>
+
+              <th
+                className="py-2 px-4 border-b cursor-pointer"
+                onClick={() => handleSort("firstName")}
+              >
                 <div className="flex items-center">
                   <span>Name</span>
-                  {sortColumn === 'firstName' && (
+                  {sortColumn === "firstName" && (
                     <span className="ml-1">
-                      {sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+                      {sortDirection === "asc" ? (
+                        <ArrowUp size={14} />
+                      ) : (
+                        <ArrowDown size={14} />
+                      )}
                     </span>
                   )}
                 </div>
               </th>
-              <th className="py-2 px-4 border-b cursor-pointer" onClick={() => handleSort('course')}>
+              <th
+                className="py-2 px-4 border-b cursor-pointer"
+                onClick={() => handleSort("course")}
+              >
                 <div className="flex items-center">
                   <span>Course</span>
-                  {sortColumn === 'course' && (
+                  {sortColumn === "course" && (
                     <span className="ml-1">
-                      {sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+                      {sortDirection === "asc" ? (
+                        <ArrowUp size={14} />
+                      ) : (
+                        <ArrowDown size={14} />
+                      )}
                     </span>
                   )}
                 </div>
               </th>
-              <th className="py-2 px-4 border-b cursor-pointer" onClick={() => handleSort('mobile')}>
+              <th
+                className="py-2 px-4 border-b cursor-pointer"
+                onClick={() => handleSort("mobile")}
+              >
                 <div className="flex items-center">
                   <span>Mobile</span>
-                  {sortColumn === 'mobile' && (
+                  {sortColumn === "mobile" && (
                     <span className="ml-1">
-                      {sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+                      {sortDirection === "asc" ? (
+                        <ArrowUp size={14} />
+                      ) : (
+                        <ArrowDown size={14} />
+                      )}
                     </span>
                   )}
                 </div>
               </th>
-              <th className="py-2 px-4 border-b cursor-pointer" onClick={() => handleSort('date')}>
+              <th
+                className="py-2 px-4 border-b cursor-pointer"
+                onClick={() => handleSort("date")}
+              >
                 <div className="flex items-center">
                   <span>Date</span>
-                  {sortColumn === 'date' && (
+                  {sortColumn === "date" && (
                     <span className="ml-1">
-                      {sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+                      {sortDirection === "asc" ? (
+                        <ArrowUp size={14} />
+                      ) : (
+                        <ArrowDown size={14} />
+                      )}
                     </span>
                   )}
                 </div>
               </th>
-              <th className="py-2 px-4 border-b cursor-pointer" onClick={() => handleSort('totalPayment')}>
+              <th
+                className="py-2 px-4 border-b cursor-pointer"
+                onClick={() => handleSort("totalPayment")}
+              >
                 <div className="flex items-center">
                   <span>Total</span>
-                  {sortColumn === 'totalPayment' && (
+                  {sortColumn === "totalPayment" && (
                     <span className="ml-1">
-                      {sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+                      {sortDirection === "asc" ? (
+                        <ArrowUp size={14} />
+                      ) : (
+                        <ArrowDown size={14} />
+                      )}
                     </span>
                   )}
                 </div>
               </th>
-              <th className="py-2 px-4 border-b cursor-pointer" onClick={() => handleSort('balance')}>
+              <th
+                className="py-2 px-4 border-b cursor-pointer"
+                onClick={() => handleSort("balance")}
+              >
                 <div className="flex items-center">
                   <span>Balance</span>
-                  {sortColumn === 'balance' && (
+                  {sortColumn === "balance" && (
                     <span className="ml-1">
-                      {sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+                      {sortDirection === "asc" ? (
+                        <ArrowUp size={14} />
+                      ) : (
+                        <ArrowDown size={14} />
+                      )}
                     </span>
                   )}
                 </div>
@@ -491,12 +596,14 @@ export default function StudentsManagement() {
             </tr>
           </thead>
           <tbody>
-            {currentStudents.map((student) => (
-              <tr key={student.id} className="hover:bg-gray-50">
-                <td className="py-3 px-4 border-b">{student.id}</td>
-                <td className="py-3 px-4 border-b">{student.formno}</td>
+            {currentStudents?.map((student) => (
+              <tr key={student.student_id} className="hover:bg-gray-50">
+                <td className="py-3 px-4 border-b">{student.student_id}</td>
+
                 <td className="py-3 px-4 border-b">
-                  {student.firstName} {student.middleName && student.middleName + ' '}{student.lastName}
+                  {student.firstName}{" "}
+                  {student.middleName && student.middleName + " "}
+                  {student.lastName}
                 </td>
                 <td className="py-3 px-4 border-b">{student.course}</td>
                 <td className="py-3 px-4 border-b">{student.mobile}</td>
@@ -505,15 +612,97 @@ export default function StudentsManagement() {
                 <td className="py-3 px-4 border-b">₹{student.balance}</td>
                 <td className="py-3 px-4 border-b">
                   <div className="flex space-x-2">
-                    <button className="text-blue-500 hover:text-blue-700">Edit</button>
-                    <button className="text-red-500 hover:text-red-700">Delete</button>
+                    <button
+                      onClick={() => {
+                        setShowAddForm(true);
+                        HandleUpdate(student.student_id);
+                      }}
+                      className="text-blue-500 hover:text-blue-700"
+                    >
+                      Edit
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setDeleteModalOpen(true);
+                        setDeleteID(student.student_id);
+                      }}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      Delete
+                    </button>
                   </div>
                 </td>
               </tr>
             ))}
-            {currentStudents.length === 0 && (
+            <ExcelUpload
+              isOpen={exceluploadopen}
+              onClose={setExcelUploadOpen}
+              onImport={importToExcel}
+            />
+            {deletemodalopen && (
+              <div className="fixed inset-0  bg-opacity-50 flex items-center justify-center p-4 z-50">
+                <div className="bg-white rounded-lg shadow-xl max-w-md w-full transform transition-all">
+                  {/* Modal Header */}
+                  <div className="flex items-center justify-between p-6 border-b">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                        <Trash2 className="w-5 h-5 text-red-600" />
+                      </div>
+                      <h2 className="text-lg font-semibold text-gray-900">
+                        Confirm Deletion
+                      </h2>
+                    </div>
+                    <button
+                      onClick={() => setDeleteModalOpen(false)}
+                      className="text-gray-400 hover:text-gray-600 transition-colors"
+                      disabled={isLoading}
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+
+                  {/* Modal Body */}
+                  <div className="p-6">
+                    <p className="text-gray-600 mb-2">
+                      Are you sure you want to delete this item?
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      This action cannot be undone. The item will be permanently
+                      removed from your account.
+                    </p>
+                  </div>
+
+                  {/* Modal Footer */}
+                  <div className="flex gap-3 p-6 border-t bg-gray-50 rounded-b-lg">
+                    <button
+                      onClick={() => setDeleteModalOpen(false)}
+                      disabled={isLoading}
+                      className="flex-1 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleDelete}
+                      disabled={isLoading}
+                      className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-75 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {isLoading ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          Deleting...
+                        </>
+                      ) : (
+                        "Delete"
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+            {currentStudents?.length === 0 && (
               <tr>
-                <td colSpan="9" className="py-4 text-center text-gray-500">
+                <td colSpan={9} className="py-4 text-center text-gray-500">
                   No students found.
                 </td>
               </tr>
@@ -521,55 +710,132 @@ export default function StudentsManagement() {
           </tbody>
         </table>
       </div>
-      
+
       {/* Pagination */}
       <div className="flex justify-between items-center mt-4">
         <div className="text-sm text-gray-500">
-          Showing {indexOfFirstStudent + 1} to {Math.min(indexOfLastStudent, filteredStudents.length)} of {filteredStudents.length} entries
+          Showing {indexOfFirstStudent + 1} to{" "}
+          {Math.min(indexOfLastStudent, filteredStudents?.length)} of{" "}
+          {filteredStudents?.length} entries
         </div>
         <div className="flex space-x-1">
-          {Array.from({ length: Math.ceil(filteredStudents.length / studentsPerPage) }, (_, i) => (
-            <button
-              key={i}
-              onClick={() => paginate(i + 1)}
-              className={`px-3 py-1 border ${
-                currentPage === i + 1 ? 'bg-blue-500 text-white' : 'bg-white text-gray-500'
-              } rounded`}
-            >
-              {i + 1}
-            </button>
-          ))}
+          {Array.from(
+            //@ts-expect-error err
+            { length: Math.ceil(filteredStudents?.length / studentsPerPage) },
+            (_, i) => (
+              <button
+                key={i}
+                onClick={() => paginate(i + 1)}
+                className={`px-3 py-1 border ${
+                  currentPage === i + 1
+                    ? "bg-blue-500 text-white"
+                    : "bg-white text-gray-500"
+                } rounded`}
+              >
+                {i + 1}
+              </button>
+            )
+          )}
         </div>
       </div>
-      
+
       {/* Add Student Form (Modal) */}
       {showAddForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-screen overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Add New Student</h3>
-              <button 
+              <button
                 onClick={() => setShowAddForm(false)}
                 className="text-gray-500 hover:text-gray-700"
               >
                 <X size={20} />
               </button>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Photo Upload Section */}
+              <div className="md:col-span-3 mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Student Photo <span className="text-red-500">*</span>
+                </label>
+                <div className="flex items-center gap-6">
+                  <div className="relative">
+                    {photoPreview ? (
+                      <div className="relative w-24 h-24">
+                        <button
+                          type="button"
+                          onClick={removePhoto}
+                          className="absolute self-end -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600"
+                        >
+                          <X size={16} />
+                        </button>
+                        <img
+                          src={photoPreview}
+                          alt="Student Preview"
+                          className="h-full w-full object-cover rounded-full border-2 border-gray-300"
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-20 h-20 bg-gray-100 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center">
+                        <User size={32} className="text-gray-400" />
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <input
+                      type="file"
+                      id="photo"
+                      name="photo"
+                      accept="image/*"
+                      onChange={handlePhotoChange}
+                      className="hidden"
+                      required
+                    />
+                    <label
+                      htmlFor="photo"
+                      className="flex items-center space-x-2 bg-blue-50 text-blue-600 px-4 py-2 rounded-lg cursor-pointer hover:bg-blue-100"
+                    >
+                      <Upload size={16} />
+                      <span>Upload Photo</span>
+                    </label>
+                    <p className="text-xs text-gray-500 mt-1">
+                      JPG, PNG or GIF. Max size 5MB
+                    </p>
+                    {formErrors.photo && (
+                      <p className="text-xs text-red-500 mt-1">
+                        {formErrors.photo}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  First Name <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
                   name="firstName"
                   value={newStudent.firstName}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  className={`w-full px-3 py-2 border ${
+                    formErrors.firstName ? "border-red-500" : "border-gray-300"
+                  } rounded-md`}
                   placeholder="First Name"
+                  required
                 />
+                {formErrors.firstName && (
+                  <p className="text-xs text-red-500 mt-1">
+                    {formErrors.firstName}
+                  </p>
+                )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Middle Name</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Middle Name
+                </label>
                 <input
                   type="text"
                   name="middleName"
@@ -580,33 +846,54 @@ export default function StudentsManagement() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Last Name <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
                   name="lastName"
                   value={newStudent.lastName}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  className={`w-full px-3 py-2 border ${
+                    formErrors.lastName ? "border-red-500" : "border-gray-300"
+                  } rounded-md`}
                   placeholder="Last Name"
+                  required
                 />
+                {formErrors.lastName && (
+                  <p className="text-xs text-red-500 mt-1">
+                    {formErrors.lastName}
+                  </p>
+                )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Date of Birth <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="date"
                   name="dob"
                   value={newStudent.dob}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  className={`w-full px-3 py-2 border ${
+                    formErrors.dob ? "border-red-500" : "border-gray-300"
+                  } rounded-md`}
+                  required
                 />
+                {formErrors.dob && (
+                  <p className="text-xs text-red-500 mt-1">{formErrors.dob}</p>
+                )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Gender <span className="text-red-500">*</span>
+                </label>
                 <select
                   name="gender"
                   value={newStudent.gender}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  required
                 >
                   <option value="Male">Male</option>
                   <option value="Female">Female</option>
@@ -614,40 +901,74 @@ export default function StudentsManagement() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Qualification</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Qualification <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
                   name="qualification"
                   value={newStudent.qualification}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  className={`w-full px-3 py-2 border ${
+                    formErrors.qualification
+                      ? "border-red-500"
+                      : "border-gray-300"
+                  } rounded-md`}
                   placeholder="Qualification"
+                  required
                 />
+                {formErrors.qualification && (
+                  <p className="text-xs text-red-500 mt-1">
+                    {formErrors.qualification}
+                  </p>
+                )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Aadhaar Number</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Aadhaar Number <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
                   name="adhaar"
                   value={newStudent.adhaar}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  className={`w-full px-3 py-2 border ${
+                    formErrors.adhaar ? "border-red-500" : "border-gray-300"
+                  } rounded-md`}
                   placeholder="12-digit Aadhaar Number"
+                  required
                 />
+                {formErrors.adhaar && (
+                  <p className="text-xs text-red-500 mt-1">
+                    {formErrors.adhaar}
+                  </p>
+                )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Mobile Number</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Mobile Number <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
                   name="mobile"
                   value={newStudent.mobile}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  className={`w-full px-3 py-2 border ${
+                    formErrors.mobile ? "border-red-500" : "border-gray-300"
+                  } rounded-md`}
                   placeholder="10-digit Mobile Number"
+                  required
                 />
+                {formErrors.mobile && (
+                  <p className="text-xs text-red-500 mt-1">
+                    {formErrors.mobile}
+                  </p>
+                )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Alternative Number</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Alternative Number
+                </label>
                 <input
                   type="text"
                   name="altnumber"
@@ -658,50 +979,88 @@ export default function StudentsManagement() {
                 />
               </div>
               <div className="md:col-span-3">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Address <span className="text-red-500">*</span>
+                </label>
                 <textarea
                   name="address"
                   value={newStudent.address}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  className={`w-full px-3 py-2 border ${
+                    formErrors.address ? "border-red-500" : "border-gray-300"
+                  } rounded-md`}
                   placeholder="Full Address"
-                  rows="2"
+                  rows={2}
+                  required
                 ></textarea>
+                {formErrors.address && (
+                  <p className="text-xs text-red-500 mt-1">
+                    {formErrors.address}
+                  </p>
+                )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Course</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Course <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
                   name="course"
                   value={newStudent.course}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  className={`w-full px-3 py-2 border ${
+                    formErrors.course ? "border-red-500" : "border-gray-300"
+                  } rounded-md`}
                   placeholder="Course Name"
+                  required
                 />
+                {formErrors.course && (
+                  <p className="text-xs text-red-500 mt-1">
+                    {formErrors.course}
+                  </p>
+                )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Admission Date</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Admission Date <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="date"
                   name="date"
                   value={newStudent.date}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Total Payment (₹)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Total Payment (₹) <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="number"
                   name="totalPayment"
                   value={newStudent.totalPayment}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  className={`w-full px-3 py-2 border ${
+                    formErrors.totalPayment
+                      ? "border-red-500"
+                      : "border-gray-300"
+                  } rounded-md`}
                   placeholder="Total Course Fee"
+                  required
+                  min="1"
                 />
+                {formErrors.totalPayment && (
+                  <p className="text-xs text-red-500 mt-1">
+                    {formErrors.totalPayment}
+                  </p>
+                )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Discount (₹)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Discount (₹)
+                </label>
                 <input
                   type="number"
                   name="discount"
@@ -709,10 +1068,13 @@ export default function StudentsManagement() {
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   placeholder="Discount Amount"
+                  min="0"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Made (₹)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Payment Made (₹)
+                </label>
                 <input
                   type="number"
                   name="payment"
@@ -720,10 +1082,13 @@ export default function StudentsManagement() {
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   placeholder="Payment Made"
+                  min="0"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Balance (₹)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Balance (₹)
+                </label>
                 <input
                   type="number"
                   name="balance"
@@ -734,7 +1099,7 @@ export default function StudentsManagement() {
                 />
               </div>
             </div>
-            
+
             <div className="mt-6 flex justify-end space-x-3">
               <button
                 onClick={() => setShowAddForm(false)}
@@ -749,18 +1114,37 @@ export default function StudentsManagement() {
               >
                 {isLoading ? (
                   <div className="flex items-center">
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
                     </svg>
                     Processing...
                   </div>
-                ) : 'Save Student'}
+                ) : (
+                  "Save Student"
+                )}
               </button>
             </div>
           </div>
         </div>
       )}
+      <ToastContainer />
     </div>
   );
 }

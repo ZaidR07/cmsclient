@@ -1,6 +1,17 @@
 "use client";
 import { useState } from 'react';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
+import axios from 'axios';
+
+import { UseSelector , useDispatch } from 'react-redux';
+
+import { setdb, setEmail, setRank } from '@/slices/adminSlice';
+
+import { useRouter } from 'next/navigation';
+import { toast , ToastContainer } from 'react-toastify';
+import { decryptData } from '@/util/Data_protection';
+import { emit } from 'process';
+
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
@@ -9,7 +20,6 @@ export default function LoginPage() {
     client_id: '',
     admin_id: '',
     password: '',
-    loginType: 'client' // default to client
   });
 
   const handleInputChange = (e) => {
@@ -20,29 +30,45 @@ export default function LoginPage() {
     });
   };
 
-  const handleLoginTypeChange = (type) => {
-    setFormData({
-      ...formData,
-      loginType: type
-    });
-  };
+  const dispatch = useDispatch();
 
-  const handleSubmit = (e) => {
+  const router = useRouter();
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    // setLoading(true);
 
-    const loginPayload = {
-      id: formData.loginType === 'client' ? formData.client_id : formData.admin_id,
-      password: formData.password,
-      loginType: formData.loginType
-    };
+    try {
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}adminlogin`, formData);
 
-    console.log('Logging in with:', loginPayload);
 
-    setTimeout(() => {
-      setLoading(false);
-      console.log('Login successful, redirecting...');
-    }, 1500);
+      if(response.data.payload?.rank){
+        dispatch(setRank(decryptData(response.data.payload.rank , process.env.NEXT_PUBLIC_API_KEY)))
+      }
+
+      if(response.data.payload?.db){
+        dispatch(setdb(decryptData(response.data.payload.db , process.env.NEXT_PUBLIC_API_KEY)))
+      }
+
+      if(response.data.payload?.email){
+        dispatch(setEmail(response.data.payload.email))
+      }
+
+
+      router.push("/dashboard");
+
+
+
+
+    } catch (error) {
+      if(error.response.data?.message){
+        toast.error(error.response.data?.message)
+      }else{
+        toast.error("Something Went Wrong")
+      }
+    }
+
+    
   };
 
   const togglePasswordVisibility = () => {
@@ -50,98 +76,124 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-lg">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Student Management System</h1>
-          {/* <p className="mt-2 text-sm text-gray-600">Sign in to access your account</p> */}
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-400 via-purple-500 to-pink-200 flex items-center justify-center p-6">
+      {/* Background Blurs */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/10 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-white/5 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/3 left-1/4 w-64 h-64 bg-yellow-300/10 rounded-full blur-2xl"></div>
+      </div>
 
-        <div className="mt-8 space-y-6">
-          <div>
-            <label htmlFor="client_id" className="block text-sm font-medium text-gray-700">
-              Client ID
-            </label>
-            <input
-              id="client_id"
-              name="client_id"
-              type="text"
-              className="mt-1 block w-full text-black px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Enter Client ID"
-              value={formData.client_id}
-              onChange={handleInputChange}
-            />
+      {/* Card */}
+      <div className="relative w-full max-w-lg">
+        <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-8 transition-all duration-300 hover:scale-[1.02]">
+          <div className="text-center mb-8">
+            <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl mx-auto mb-6 flex items-center justify-center shadow-lg transform hover:rotate-12 transition-transform duration-300">
+              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+              </svg>
+            </div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              Classes&nbsp;Management&nbsp;System
+            </h1>
           </div>
 
-          <div>
-            <label htmlFor="admin_id" className="block text-sm font-medium text-gray-700">
-              Admin ID
-            </label>
-            <input
-              id="admin_id"
-              name="admin_id"
-              type="text"
-              className="mt-1 block w-full text-black px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Enter Admin ID"
-              value={formData.admin_id}
-              onChange={handleInputChange}
-            />
-          </div>
-
-          <div className="relative">
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-              Password
-            </label>
-            <div className="flex relative">
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Client ID */}
+            <div className="group">
+              
               <input
-                id="password"
-                name="password"
-                type={showPassword ? 'text' : 'password'}
-                className="mt-1 block w-full text-black px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Enter password"
-                value={formData.password}
+                id="client_id"
+                name="client_id"
+                type="text"
+                value={formData.client_id}
                 onChange={handleInputChange}
+                placeholder="Enter Client ID"
+                className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/20 transition-all"
               />
+            </div>
+
+            {/* Admin ID */}
+            <div className="group">
+            
+              <input
+                id="admin_id"
+                name="admin_id"
+                type="text"
+                value={formData.admin_id}
+                onChange={handleInputChange}
+                placeholder="Enter Admin ID"
+                className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/20 transition-all"
+              />
+            </div>
+
+            {/* Password */}
+            <div className="group">
+              
+              <div className="relative">
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  placeholder="Enter Password"
+                  className="w-full px-4 py-3 pr-12 bg-gray-50 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/20 transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={togglePasswordVisibility}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-indigo-600"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Forgot/Change Password */}
+            <div className="text-right">
               <button
                 type="button"
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                onClick={togglePasswordVisibility}
+                className="text-sm text-indigo-600 hover:text-purple-600 hover:underline transition-all"
+                onClick={() => console.log("Forgot/Change Password clicked")}
               >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                Forgot Password / Change Password?
               </button>
             </div>
-          </div>
 
-          <div className="text-sm text-right">
-            <span className="font-medium text-blue-600 hover:text-blue-500 cursor-pointer">
-              Forgot your password?
-            </span>
-          </div>
-
-          <div>
+            {/* Submit Button */}
             <button
-              onClick={handleSubmit}
+              type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              className="w-full flex justify-center items-center py-3 px-6 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold rounded-2xl hover:from-indigo-600 hover:to-purple-700 focus:outline-none focus:ring-4 focus:ring-indigo-500/30 transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 shadow-lg"
             >
-              <span className="absolute left-0 inset-y-0 flex items-center pl-3">
-                <LogIn className="h-5 w-5 text-blue-500 group-hover:text-blue-400" />
-              </span>
               {loading ? (
-                <div className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                <>
+                  <svg className="animate-spin h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.3 0 0 5.3 0 12h4zm2 5.3A7.96 7.96 0 014 12H0c0 3.04 1.13 5.82 3 7.94l3-2.64z" />
                   </svg>
-                  Signing In...
-                </div>
+                  Processing...
+                </>
               ) : (
-                'Sign in'
+                <>
+                  <LogIn className="h-5 w-5 mr-3" />
+                  Sign in
+                </>
               )}
             </button>
-          </div>
+          </form>
+        </div>
+
+        {/* Footer */}
+        <div className="text-center mt-6 text-white/90 text-sm">
+          <span className="font-medium">Powered by </span>
+          <span className="font-bold text-lg bg-gradient-to-r from-white to-gray-200 bg-clip-text text-transparent">T-Rex Infotech</span>
         </div>
       </div>
+      <ToastContainer/>
     </div>
   );
 }

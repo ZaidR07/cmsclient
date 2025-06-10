@@ -9,6 +9,8 @@ import StudentsManagement from '@/components/Students';
 import ExamsManagement from '@/components/Exams';
 import CoursesManagement from '@/components/Courses';
 import AdminManagement from '@/components/Admin';
+import { decryptData } from '@/util/Data_protection';
+import { useSelector } from 'react-redux';
 
 // Sample data for the visitors chart
 const visitorData = [
@@ -53,12 +55,18 @@ export default function Dashboard() {
     { icon: <Settings size={20} />, label: 'Settings', value: 'settings' }
   ];
 
+  const adminemailstate = useSelector((state: any) => state.admin.email); 
+
+  
+
+
+
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
       <div className={`${isSidebarOpen ? 'w-64' : 'w-20'} bg-white h-full shadow-lg transition-all duration-300 fixed`}>
         <div className="p-4 flex items-center justify-between border-b">
-          {isSidebarOpen && <h1 className="text-xl font-bold text-gray-800">SMS Admin</h1>}
+          {isSidebarOpen && <h1 className="text-xl font-bold text-gray-800">Control Panel</h1>}
           <button 
             onClick={toggleSidebar} 
             className="p-2 rounded-md hover:bg-gray-100"
@@ -95,27 +103,27 @@ export default function Dashboard() {
       {/* Main Content */}
       <div className={`flex-1 ${isSidebarOpen ? 'ml-64' : 'ml-20'} transition-all duration-300`}>
         {/* Header */}
-        <header className="bg-white shadow-sm p-4">
+        <header className="bg-white shadow-sm px-4 py-2" >
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-semibold text-gray-800">
               {sidebarItems.find(item => item.value === activeTab)?.label || 'Dashboard'}
             </h1>
             <div className="flex items-center">
-              <div className="relative mr-4">
+              {/* <div className="relative mr-8">
                 <input
                   type="text"
                   placeholder="Search..."
                   className="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold">
-                  AD
+              </div> */}
+              <div className="flex flex-col gap-2 items-end space-x-2">
+                <div className="w-8 h-8 text-xl rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold">
+                  {adminemailstate.slice(0,1)}
                 </div>
                 <div className="hidden md:block">
-                  <p className="text-sm font-medium">Admin User</p>
-                  <p className="text-xs text-gray-500">admin@example.com</p>
+                  {/* <p className="text-sm font-medium">{adminemailstate}</p> */}
+                  <p className="text-xs text-gray-500">{adminemailstate}</p>
                 </div>
               </div>
             </div>
