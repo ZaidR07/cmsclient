@@ -76,7 +76,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-400 via-purple-500 to-pink-200 flex items-center justify-center p-6">
+    <div className="min-h-screen flex items-center justify-center ">
       {/* Background Blurs */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/10 rounded-full blur-3xl"></div>
@@ -88,19 +88,19 @@ export default function LoginPage() {
       <div className="relative w-full max-w-lg">
         <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-8 transition-all duration-300 hover:scale-[1.02]">
           <div className="text-center mb-8">
-            <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl mx-auto mb-6 flex items-center justify-center shadow-lg transform hover:rotate-12 transition-transform duration-300">
+            <div className="w-14 h-14 bg-blue-700 rounded-xl mx-auto mb-6 flex items-center justify-center shadow-lg transform hover:rotate-12 transition-transform duration-300">
               <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
               </svg>
             </div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+            <h1 className="text-3xl font-bold bg-blue-700 bg-clip-text text-transparent">
               Classes&nbsp;Management&nbsp;System
             </h1>
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-3">
             {/* Client ID */}
             <div className="group">
               
@@ -156,7 +156,7 @@ export default function LoginPage() {
             <div className="text-right">
               <button
                 type="button"
-                className="text-sm text-indigo-600 hover:text-purple-600 hover:underline transition-all"
+                className="text-sm text-blue-700 hover:text-purple-600 hover:underline transition-all"
                 onClick={() => console.log("Forgot/Change Password clicked")}
               >
                 Forgot Password / Change Password?
@@ -167,7 +167,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex justify-center items-center py-3 px-6 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold rounded-2xl hover:from-indigo-600 hover:to-purple-700 focus:outline-none focus:ring-4 focus:ring-indigo-500/30 transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 shadow-lg"
+              className="w-full flex justify-center items-center py-3 px-6 bg-blue-700 text-white font-semibold rounded-2xl hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-indigo-500/30 transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 shadow-lg"
             >
               {loading ? (
                 <>
@@ -188,9 +188,9 @@ export default function LoginPage() {
         </div>
 
         {/* Footer */}
-        <div className="text-center mt-6 text-white/90 text-sm">
+        <div className="text-center mt-4 text-blue-800 text-sm">
           <span className="font-medium">Powered by </span>
-          <span className="font-bold text-lg bg-gradient-to-r from-white to-gray-200 bg-clip-text text-transparent">T-Rex Infotech</span>
+          <span className="font-semibold text-lg  bg-clip-text ">T-Rex Infotech</span>
         </div>
       </div>
       <ToastContainer/>

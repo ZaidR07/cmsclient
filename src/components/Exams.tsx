@@ -143,11 +143,8 @@ export default function ExamsManagement() {
     }
 
     if (searchTerm) {
-      filtered = filtered.filter(
-        (exam) =>
-          exam.exam_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          exam.exam_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          exam.created_date.includes(searchTerm)
+      filtered = filtered.filter((exam) =>
+        exam.exam_name.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -188,12 +185,13 @@ export default function ExamsManagement() {
   // Open participants modal
   const openParticipantsModal = async (exam: Exam) => {
     try {
-      const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}getexamparticipants`,{
-          payload : {
-            exam_id :  exam.exam_id,
-            db : admindbstate
-          }
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL}getexamparticipants`,
+        {
+          params: {
+            exam_id: exam.exam_id,
+            db: admindbstate,
+          },
         }
       );
 
@@ -203,7 +201,6 @@ export default function ExamsManagement() {
     } catch (error) {
       console.log(error);
       setShowParticipantsModal(true);
-
     }
   };
 
@@ -211,10 +208,10 @@ export default function ExamsManagement() {
   const filteredParticipants =
     currentExam?.participants?.filter(
       (participant: any) =>
-        participant.name
+        participant.firstName
           .toLowerCase()
           .includes(participantSearchTerm.toLowerCase()) ||
-        participant.id
+        participant.lastName
           .toLowerCase()
           .includes(participantSearchTerm.toLowerCase())
     ) || [];
@@ -452,16 +449,14 @@ export default function ExamsManagement() {
                       View
                     </button>
 
-                    <button className="text-red-500 hover:text-red-700">
-                      Delete
-                    </button>
+                    
                   </div>
                 </td>
               </tr>
             ))}
             {currentExams.length === 0 && (
               <tr>
-                <td colSpan="7" className="py-4 text-center text-gray-500">
+                <td colSpan={7} className="py-4 text-center text-gray-500">
                   No exams found.
                 </td>
               </tr>
@@ -656,7 +651,8 @@ export default function ExamsManagement() {
           <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-screen overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">
-                Exam: {currentExam.exam_name} ({currentExam.exam_id})
+                Exam Name: {currentExam.exam.exam_name} (
+                {currentExam.exam.exam_id})
               </h3>
               <button
                 onClick={() => setShowParticipantsModal(false)}
@@ -669,16 +665,9 @@ export default function ExamsManagement() {
             <div className="flex items-center mb-4 text-sm">
               <div className="flex items-center mr-6">
                 <Calendar size={16} className="mr-1 text-gray-500" />
-                <span>Created: {currentExam.createdAt}</span>
+                <span>Created: {currentExam.exam.createdAt}</span>
               </div>
-              <div className="flex items-center mr-6">
-                <Tag size={16} className="mr-1 text-gray-500" />
-                <span>
-                  Status:{" "}
-                  {currentExam.status.charAt(0).toUpperCase() +
-                    currentExam.status.slice(1)}
-                </span>
-              </div>
+
               <div className="flex items-center">
                 <FileText size={16} className="mr-1 text-gray-500" />
                 <span>
@@ -717,30 +706,29 @@ export default function ExamsManagement() {
                     <th className="py-2 px-4 border-b">Student ID</th>
                     <th className="py-2 px-4 border-b">Name</th>
                     <th className="py-2 px-4 border-b">Score</th>
-                    <th className="py-2 px-4 border-b">Status</th>
                     <th className="py-2 px-4 border-b">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredParticipants.map((participant) => (
-                    <tr key={participant.id} className="hover:bg-gray-50">
-                      <td className="py-3 px-4 border-b">{participant.id}</td>
-                      <td className="py-3 px-4 border-b">{participant.name}</td>
-                      <td className="py-3 px-4 border-b">
-                        {participant.score}/100
+                    <tr
+                      key={participant.id}
+                      className="hover:bg-gray-50 text-center"
+                    >
+                      <td className="py-3 px-6 border-b">
+                        {participant.student_id}
                       </td>
                       <td className="py-3 px-4 border-b">
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-medium ${
-                            participant.completed
-                              ? "bg-green-100 text-green-800"
-                              : "bg-yellow-100 text-yellow-800"
-                          }`}
-                        >
-                          {participant.completed ? "Completed" : "Pending"}
-                        </span>
+                        {participant.firstName}&nbsp;{participant.lastName}
                       </td>
+
                       <td className="py-3 px-4 border-b">
+                        {participant.exams.find(
+                          (item) => item.exam_id == currentExam.exam.exam_id
+                        )?.score ?? "N/A"}
+                      </td>
+
+                      <td className="py-3 px-4 border-b flex justify-center">
                         <button
                           onClick={() =>
                             generateCertificate(
@@ -748,7 +736,7 @@ export default function ExamsManagement() {
                               participant.id
                             )
                           }
-                          className="flex items-center text-green-500 hover:text-green-700"
+                          className="flex items-center justify-center text-green-500 hover:text-green-700"
                           disabled={!participant.completed}
                         >
                           <Award size={16} className="mr-1" />

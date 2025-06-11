@@ -11,6 +11,7 @@ import CoursesManagement from '@/components/Courses';
 import AdminManagement from '@/components/Admin';
 import { decryptData } from '@/util/Data_protection';
 import { useSelector } from 'react-redux';
+import Settingstab from '@/components/Settings';
 
 // Sample data for the visitors chart
 const visitorData = [
@@ -189,6 +190,11 @@ export default function Dashboard() {
           {activeTab === 'admin' && (
             <div>
               <AdminManagement/>c
+            </div>
+          )}
+          {activeTab === 'settings' && (
+            <div>
+              <Settingstab/>
             </div>
           )}
           

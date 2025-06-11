@@ -52,7 +52,7 @@ export default function StudentsManagement() {
     balance: 0,
     photo: null,
   });
-  const [updateID, setUpdateID] = useState("");
+  const [update, setUpdate] = useState(false);
   const [deleteID, setDeleteID] = useState("");
 
   const [photoPreview, setPhotoPreview] = useState(null);
@@ -273,9 +273,9 @@ export default function StudentsManagement() {
   // Populating values of student
   const HandleUpdate = (id) => {
     //@ts-expect-error err
-    const filteredstudent = students?.filter((item) => item.student_id == id);
+    const filteredStudents = students?.filter((item) => item.student_id == id);
 
-    //@ts-expect-error
+    setUpdate(true)
     setNewStudent(filteredStudents[0]);
   };
 
@@ -302,7 +302,7 @@ export default function StudentsManagement() {
       });
 
       formData.append("folder", admindbstate);
-      formData.append("student_id", updateID);
+    
 
       // Make API call with multipart/form-data
       const response = await axios.post(
@@ -1050,6 +1050,7 @@ export default function StudentsManagement() {
                   placeholder="Total Course Fee"
                   required
                   min="1"
+                  disabled={update}
                 />
                 {formErrors.totalPayment && (
                   <p className="text-xs text-red-500 mt-1">
@@ -1069,6 +1070,8 @@ export default function StudentsManagement() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   placeholder="Discount Amount"
                   min="0"
+                  disabled={update}
+
                 />
               </div>
               <div>
@@ -1083,6 +1086,8 @@ export default function StudentsManagement() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   placeholder="Payment Made"
                   min="0"
+                  disabled={update}
+
                 />
               </div>
               <div>
