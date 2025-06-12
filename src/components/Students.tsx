@@ -13,7 +13,6 @@ import {
   User,
   Trash2,
 } from "lucide-react";
-
 import _ from "lodash";
 import axios from "axios";
 import { toast, ToastContainer } from "react-toastify";
@@ -50,20 +49,22 @@ export default function StudentsManagement() {
     discount: 0,
     payment: 0,
     balance: 0,
+    paymentmode: "",
+    chequeNo: "",
+    otherPaymentMode: "",
     photo: null,
   });
   const [update, setUpdate] = useState(false);
   const [deleteID, setDeleteID] = useState("");
-
   const [photoPreview, setPhotoPreview] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-
   const [deletemodalopen, setDeleteModalOpen] = useState(false);
-
   const [formErrors, setFormErrors] = useState({});
 
   //@ts-expect-error err
   const admindbstate = useSelector((state) => state.admin.db);
+
+  const paymentmodes = ["UPI", "Cash", "Cheque", "Other"];
 
   // Filter students when search term changes
   useEffect(() => {
@@ -165,19 +166,15 @@ export default function StudentsManagement() {
       const total =
         name === "totalPayment"
           ? parseFloat(value) || 0
-          : //@ts-expect-error err
-            parseFloat(newStudent.totalPayment) || 0;
+          : parseFloat(newStudent.totalPayment) || 0;
       const discount =
         name === "discount"
           ? parseFloat(value) || 0
-          : //@ts-expect-error err
-            parseFloat(newStudent.discount) || 0;
-
+          : parseFloat(newStudent.discount) || 0;
       const payment =
         name === "payment"
           ? parseFloat(value) || 0
-          : //@ts-expect-error err
-            parseFloat(newStudent.payment) || 0;
+          : parseFloat(newStudent.payment) || 0;
 
       const balance = total - discount - payment;
 
@@ -185,6 +182,13 @@ export default function StudentsManagement() {
         ...newStudent,
         [name]: value,
         balance: balance >= 0 ? balance : 0,
+      });
+    } else if (name === "paymentmode") {
+      setNewStudent({
+        ...newStudent,
+        [name]: value,
+        chequeNo: value === "Cheque" ? newStudent.chequeNo : "",
+        otherPaymentMode: value === "Other" ? newStudent.otherPaymentMode : "",
       });
     } else {
       setNewStudent({
@@ -265,6 +269,16 @@ export default function StudentsManagement() {
       errors.totalPayment = "Total payment must be greater than 0";
       isValid = false;
     }
+    if (newStudent.paymentmode === "Cheque" && !newStudent.chequeNo.trim()) {
+      //@ts-expect-error err
+      errors.chequeNo = "Cheque number is required for Cheque payment";
+      isValid = false;
+    }
+    if (newStudent.paymentmode === "Other" && !newStudent.otherPaymentMode.trim()) {
+      //@ts-expect-error err
+      errors.otherPaymentMode = "Payment mode name is required for Other payment";
+      isValid = false;
+    }
 
     setFormErrors(errors);
     return isValid;
@@ -275,7 +289,7 @@ export default function StudentsManagement() {
     //@ts-expect-error err
     const filteredStudents = students?.filter((item) => item.student_id == id);
 
-    setUpdate(true)
+    setUpdate(true);
     setNewStudent(filteredStudents[0]);
   };
 
@@ -302,7 +316,6 @@ export default function StudentsManagement() {
       });
 
       formData.append("folder", admindbstate);
-    
 
       // Make API call with multipart/form-data
       const response = await axios.post(
@@ -333,6 +346,9 @@ export default function StudentsManagement() {
         discount: 0,
         payment: 0,
         balance: 0,
+        paymentmode: "",
+        chequeNo: "",
+        otherPaymentMode: "",
         photo: null,
       });
       setPhotoPreview(null);
@@ -489,7 +505,6 @@ export default function StudentsManagement() {
                   )}
                 </div>
               </th>
-
               <th
                 className="py-2 px-4 border-b cursor-pointer"
                 onClick={() => handleSort("firstName")}
@@ -599,7 +614,6 @@ export default function StudentsManagement() {
             {currentStudents?.map((student) => (
               <tr key={student.student_id} className="hover:bg-gray-50">
                 <td className="py-3 px-4 border-b">{student.student_id}</td>
-
                 <td className="py-3 px-4 border-b">
                   {student.firstName}{" "}
                   {student.middleName && student.middleName + " "}
@@ -621,7 +635,6 @@ export default function StudentsManagement() {
                     >
                       Edit
                     </button>
-
                     <button
                       onClick={() => {
                         setDeleteModalOpen(true);
@@ -641,9 +654,8 @@ export default function StudentsManagement() {
               onImport={importToExcel}
             />
             {deletemodalopen && (
-              <div className="fixed inset-0  bg-opacity-50 flex items-center justify-center p-4 z-50">
+              <div className="fixed inset-0 bg-opacity-50 flex items-center justify-center p-4 z-50">
                 <div className="bg-white rounded-lg shadow-xl max-w-md w-full transform transition-all">
-                  {/* Modal Header */}
                   <div className="flex items-center justify-between p-6 border-b">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
@@ -661,8 +673,6 @@ export default function StudentsManagement() {
                       <X size={20} />
                     </button>
                   </div>
-
-                  {/* Modal Body */}
                   <div className="p-6">
                     <p className="text-gray-600 mb-2">
                       Are you sure you want to delete this item?
@@ -672,8 +682,6 @@ export default function StudentsManagement() {
                       removed from your account.
                     </p>
                   </div>
-
-                  {/* Modal Footer */}
                   <div className="flex gap-3 p-6 border-t bg-gray-50 rounded-b-lg">
                     <button
                       onClick={() => setDeleteModalOpen(false)}
@@ -1071,7 +1079,6 @@ export default function StudentsManagement() {
                   placeholder="Discount Amount"
                   min="0"
                   disabled={update}
-
                 />
               </div>
               <div>
@@ -1087,9 +1094,85 @@ export default function StudentsManagement() {
                   placeholder="Payment Made"
                   min="0"
                   disabled={update}
-
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Payment Mode <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="paymentmode"
+                  value={newStudent.paymentmode}
+                  onChange={handleInputChange}
+                  className={`w-full px-3 py-2 border ${
+                    formErrors.paymentmode ? "border-red-500" : "border-gray-300"
+                  } rounded-md`}
+                  required
+                  disabled={update}
+                >
+                  <option value="">Select Payment Mode</option>
+                  {paymentmodes.map((mode) => (
+                    <option key={mode} value={mode}>
+                      {mode}
+                    </option>
+                  ))}
+                </select>
+                {formErrors.paymentmode && (
+                  <p className="text-xs text-red-500 mt-1">
+                    {formErrors.paymentmode}
+                  </p>
+                )}
+              </div>
+              {newStudent.paymentmode === "Cheque" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Cheque Number <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="chequeNo"
+                    value={newStudent.chequeNo}
+                    onChange={handleInputChange}
+                    className={`w-full px-3 py-2 border ${
+                      formErrors.chequeNo ? "border-red-500" : "border-gray-300"
+                    } rounded-md`}
+                    placeholder="Enter Cheque Number"
+                    required
+                    disabled={update}
+                  />
+                  {formErrors.chequeNo && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {formErrors.chequeNo}
+                    </p>
+                  )}
+                </div>
+              )}
+              {newStudent.paymentmode === "Other" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Other Payment Mode <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="otherPaymentMode"
+                    value={newStudent.otherPaymentMode}
+                    onChange={handleInputChange}
+                    className={`w-full px-3 py-2 border ${
+                      formErrors.otherPaymentMode
+                        ? "border-red-500"
+                        : "border-gray-300"
+                    } rounded-md`}
+                    placeholder="Specify Payment Mode"
+                    required
+                    disabled={update}
+                  />
+                  {formErrors.otherPaymentMode && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {formErrors.otherPaymentMode}
+                    </p>
+                  )}
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Balance (₹)

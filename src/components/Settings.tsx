@@ -1,25 +1,30 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import { toast, ToastContainer } from "react-toastify";
+import { useSelector } from "react-redux";
 
 const Settingstab = () => {
   const [receiptSettings, setReceiptSettings] = useState({
     logo: null,
-    headerBackground: '#000000',
-    headerColor: '#ffffff',
-    secondHeaderBackground: '#f5f5f5',
-    companyName: '',
-    highlight: '',
-    contact: '',
-    altContact: '',
-    address: '',
-    notes: [''],
-    signature: null
+    headerBackground: "#000000",
+    headerColor: "#ffffff",
+    secondHeaderBackground: "#f5f5f5",
+    companyName: "",
+    highlight: "",
+    contact: "",
+    altContact: "",
+    address: "",
+    notes: [""],
+    signature: null,
   });
 
+  //@ts-expect-error err
+  const admindbstate = useSelector((state) => state.admin.db);
+
   const handleInputChange = (field, value) => {
-    setReceiptSettings(prev => ({
+    setReceiptSettings((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
@@ -28,9 +33,9 @@ const Settingstab = () => {
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
-        setReceiptSettings(prev => ({
+        setReceiptSettings((prev) => ({
           ...prev,
-          [field]: e.target.result
+          [field]: e.target.result,
         }));
       };
       reader.readAsDataURL(file);
@@ -38,38 +43,172 @@ const Settingstab = () => {
   };
 
   const addNote = () => {
-    setReceiptSettings(prev => ({
+    setReceiptSettings((prev) => ({
       ...prev,
-      notes: [...prev.notes, '']
+      notes: [...prev.notes, ""],
     }));
   };
 
   const updateNote = (index, value) => {
-    setReceiptSettings(prev => ({
+    setReceiptSettings((prev) => ({
       ...prev,
-      notes: prev.notes.map((note, i) => i === index ? value : note)
+      notes: prev.notes.map((note, i) => (i === index ? value : note)),
     }));
   };
 
   const removeNote = (index) => {
     if (receiptSettings.notes.length > 1) {
-      setReceiptSettings(prev => ({
+      setReceiptSettings((prev) => ({
         ...prev,
-        notes: prev.notes.filter((_, i) => i !== index)
+        notes: prev.notes.filter((_, i) => i !== index),
       }));
     }
   };
 
+  const fetchReceiptSettings = async () => {
+    try {
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL}getreceiptformat`,
+        {
+          params: { db: admindbstate },
+        }
+      );
+
+      const data = response.data.payload;
+
+      if (data && data.length > 0) {
+        const settings = data[0]; // Assuming it's one document
+        setReceiptSettings((prev) => ({
+          ...prev,
+          logo: settings.logo || null,
+          headerBackground: settings.headerBackground || "#000000",
+          headerColor: settings.headerColor || "#ffffff",
+          secondHeaderBackground: settings.secondHeaderBackground || "#f5f5f5",
+          companyName: settings.companyName || "",
+          highlight: settings.highlight || "",
+          contact: settings.contact || "",
+          altContact: settings.altContact || "",
+          address: settings.address || "",
+          notes:
+            settings.notes && settings.notes.length > 0 ? settings.notes : [""],
+          signature: settings.signature || null,
+        }));
+      }
+    } catch (error) {
+      console.error("Failed to fetch receipt settings:", error);
+      toast.error("Failed to load receipt settings");
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      const formData = new FormData();
+
+      // Append text fields
+      formData.append("companyName", receiptSettings.companyName);
+      formData.append("highlight", receiptSettings.highlight);
+      formData.append("contact", receiptSettings.contact);
+      formData.append("altContact", receiptSettings.altContact);
+      formData.append("address", receiptSettings.address);
+      formData.append("headerBackground", receiptSettings.headerBackground);
+      formData.append("headerColor", receiptSettings.headerColor);
+      formData.append(
+        "secondHeaderBackground",
+        receiptSettings.secondHeaderBackground
+      );
+
+      // Append notes as JSON string or individual fields
+      receiptSettings.notes.forEach((note, index) => {
+        formData.append(`notes[${index}]`, note);
+      });
+
+      // Convert base64 images back to Blob before appending (if needed)
+      const dataURLtoBlob = (dataurl) => {
+        const arr = dataurl.split(",");
+        const mime = arr[0].match(/:(.*?);/)[1];
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+          u8arr[n] = bstr.charCodeAt(n);
+        }
+        return new Blob([u8arr], { type: mime });
+      };
+
+      const isBase64Image = (dataUrl) =>
+        typeof dataUrl === "string" && dataUrl.startsWith("data:image");
+
+      if (isBase64Image(receiptSettings.logo)) {
+        formData.append(
+          "logo",
+          dataURLtoBlob(receiptSettings.logo),
+          "logo.png"
+        );
+      }
+
+      if (isBase64Image(receiptSettings.signature)) {
+        formData.append(
+          "signature",
+          dataURLtoBlob(receiptSettings.signature),
+          "signature.png"
+        );
+      }
+
+      formData.append("db", admindbstate);
+
+      // Send the formData
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}addupdatereceipt`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      toast.success(response.data.message);
+      setReceiptSettings({
+        logo: null,
+        headerBackground: "#000000",
+        headerColor: "#ffffff",
+        secondHeaderBackground: "#f5f5f5",
+        companyName: "",
+        highlight: "",
+        contact: "",
+        altContact: "",
+        address: "",
+        notes: [""],
+        signature: null,
+      });
+      fetchReceiptSettings()
+    } catch (error) {
+      if (error.response.data?.message) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error("Something Went Wrong");
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (admindbstate) {
+      fetchReceiptSettings();
+    }
+  }, [admindbstate]);
+
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white">
       <h1 className="text-3xl font-bold text-gray-800 mb-8">Settings</h1>
-      
+
       {/* Receipt Section */}
       <div className="bg-gray-50 rounded-lg p-6 shadow-sm">
         <h2 className="text-2xl font-semibold text-gray-700 mb-6 border-b border-gray-200 pb-3">
           Receipt Configuration
         </h2>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Logo Upload */}
           <div className="space-y-2">
@@ -80,15 +219,15 @@ const Settingstab = () => {
               <input
                 type="file"
                 accept="image/*"
-                onChange={(e) => handleImageUpload('logo', e)}
+                onChange={(e) => handleImageUpload("logo", e)}
                 className="hidden"
                 id="logo-upload"
               />
               <label htmlFor="logo-upload" className="cursor-pointer">
                 {receiptSettings.logo ? (
-                  <img 
-                    src={receiptSettings.logo} 
-                    alt="Logo preview" 
+                  <img
+                    src={receiptSettings.logo}
+                    alt="Logo preview"
                     className="mx-auto h-20 w-auto object-contain"
                   />
                 ) : (
@@ -109,7 +248,7 @@ const Settingstab = () => {
             <input
               type="text"
               value={receiptSettings.companyName}
-              onChange={(e) => handleInputChange('companyName', e.target.value)}
+              onChange={(e) => handleInputChange("companyName", e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Enter company name"
             />
@@ -124,13 +263,17 @@ const Settingstab = () => {
               <input
                 type="color"
                 value={receiptSettings.headerBackground}
-                onChange={(e) => handleInputChange('headerBackground', e.target.value)}
+                onChange={(e) =>
+                  handleInputChange("headerBackground", e.target.value)
+                }
                 className="w-12 h-10 border border-gray-300 rounded cursor-pointer"
               />
               <input
                 type="text"
                 value={receiptSettings.headerBackground}
-                onChange={(e) => handleInputChange('headerBackground', e.target.value)}
+                onChange={(e) =>
+                  handleInputChange("headerBackground", e.target.value)
+                }
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="#000000"
               />
@@ -146,13 +289,17 @@ const Settingstab = () => {
               <input
                 type="color"
                 value={receiptSettings.headerColor}
-                onChange={(e) => handleInputChange('headerColor', e.target.value)}
+                onChange={(e) =>
+                  handleInputChange("headerColor", e.target.value)
+                }
                 className="w-12 h-10 border border-gray-300 rounded cursor-pointer"
               />
               <input
                 type="text"
                 value={receiptSettings.headerColor}
-                onChange={(e) => handleInputChange('headerColor', e.target.value)}
+                onChange={(e) =>
+                  handleInputChange("headerColor", e.target.value)
+                }
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="#ffffff"
               />
@@ -168,13 +315,17 @@ const Settingstab = () => {
               <input
                 type="color"
                 value={receiptSettings.secondHeaderBackground}
-                onChange={(e) => handleInputChange('secondHeaderBackground', e.target.value)}
+                onChange={(e) =>
+                  handleInputChange("secondHeaderBackground", e.target.value)
+                }
                 className="w-12 h-10 border border-gray-300 rounded cursor-pointer"
               />
               <input
                 type="text"
                 value={receiptSettings.secondHeaderBackground}
-                onChange={(e) => handleInputChange('secondHeaderBackground', e.target.value)}
+                onChange={(e) =>
+                  handleInputChange("secondHeaderBackground", e.target.value)
+                }
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="#f5f5f5"
               />
@@ -189,7 +340,7 @@ const Settingstab = () => {
             <input
               type="text"
               value={receiptSettings.highlight}
-              onChange={(e) => handleInputChange('highlight', e.target.value)}
+              onChange={(e) => handleInputChange("highlight", e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Special offer, promotion, etc."
             />
@@ -203,7 +354,7 @@ const Settingstab = () => {
             <input
               type="text"
               value={receiptSettings.contact}
-              onChange={(e) => handleInputChange('contact', e.target.value)}
+              onChange={(e) => handleInputChange("contact", e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Phone, email, or website"
             />
@@ -217,7 +368,7 @@ const Settingstab = () => {
             <input
               type="text"
               value={receiptSettings.altContact}
-              onChange={(e) => handleInputChange('altContact', e.target.value)}
+              onChange={(e) => handleInputChange("altContact", e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Secondary contact method"
             />
@@ -231,7 +382,7 @@ const Settingstab = () => {
           </label>
           <textarea
             value={receiptSettings.address}
-            onChange={(e) => handleInputChange('address', e.target.value)}
+            onChange={(e) => handleInputChange("address", e.target.value)}
             rows={3}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="Enter complete business address"
@@ -283,15 +434,15 @@ const Settingstab = () => {
             <input
               type="file"
               accept="image/*"
-              onChange={(e) => handleImageUpload('signature', e)}
+              onChange={(e) => handleImageUpload("signature", e)}
               className="hidden"
               id="signature-upload"
             />
             <label htmlFor="signature-upload" className="cursor-pointer">
               {receiptSettings.signature ? (
-                <img 
-                  src={receiptSettings.signature} 
-                  alt="Signature preview" 
+                <img
+                  src={receiptSettings.signature}
+                  alt="Signature preview"
                   className="mx-auto h-16 w-auto object-contain"
                 />
               ) : (
@@ -305,12 +456,13 @@ const Settingstab = () => {
         </div>
 
         {/* Save Button */}
-        <div className="mt-8 flex justify-end">
+        <div onClick={handleSubmit} className="mt-8 flex justify-end">
           <button className="px-6 py-2 bg-green-500 text-white font-medium rounded-md hover:bg-green-600 transition-colors">
             Save Receipt Settings
           </button>
         </div>
       </div>
+      <ToastContainer />
     </div>
   );
 };

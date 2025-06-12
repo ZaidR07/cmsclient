@@ -184,7 +184,7 @@ export default function Dashboard() {
           )}
           {activeTab === 'courses' && (
             <div>
-              <CoursesManagement/>c
+              <CoursesManagement/>
             </div>
           )}
           {activeTab === 'admin' && (
