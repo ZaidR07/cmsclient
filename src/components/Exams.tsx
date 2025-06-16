@@ -17,6 +17,7 @@ import * as XLSX from "xlsx";
 import axios from "axios";
 import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
+import { formatToDDMMYYYY } from "@/util/DateConverter";
 
 interface Option {
   id: string;
@@ -265,14 +266,7 @@ export default function ExamsManagement() {
 
   // Generate certificate for a single student
   const generateCertificate = (examId: string, studentId: string) => {
-    console.log(
-      `Generating certificate for student ${studentId} in exam ${examId}`
-    );
-    setSuccessMessage(`Certificate generated for student ID: ${studentId}`);
-
-    setTimeout(() => {
-      setSuccessMessage("");
-    }, 3000);
+    
   };
 
   // Generate certificates for all students
@@ -373,36 +367,21 @@ export default function ExamsManagement() {
               </th>
               <th
                 className="py-2 px-4 border-b cursor-pointer"
-                onClick={() => handleSort("created_date")}
               >
                 <div className="flex items-center">
                   <span>Created Date</span>
-                  {sortColumn === "created_date" && (
-                    <span className="ml-1">
-                      {sortDirection === "asc" ? (
-                        <ArrowUp size={14} />
-                      ) : (
-                        <ArrowDown size={14} />
-                      )}
-                    </span>
-                  )}
+                </div>
+              </th>
+              <th className="py-2 px-4 border-b ">
+                <div className="flex items-center">
+                  <span>Password</span>
                 </div>
               </th>
               <th
                 className="py-2 px-4 border-b cursor-pointer"
-                onClick={() => handleSort("status")}
               >
                 <div className="flex items-center">
                   <span>Status</span>
-                  {sortColumn === "status" && (
-                    <span className="ml-1">
-                      {sortDirection === "asc" ? (
-                        <ArrowUp size={14} />
-                      ) : (
-                        <ArrowDown size={14} />
-                      )}
-                    </span>
-                  )}
                 </div>
               </th>
               <th className="py-2 px-4 border-b">Participants</th>
@@ -422,7 +401,10 @@ export default function ExamsManagement() {
                   </button>
                 </td>
                 <td className="py-3 px-4 border-b">{exam.exam_name}</td>
-                <td className="py-3 px-4 border-b">{exam.createdAt}</td>
+                <td className="py-3 px-4 border-b">
+                  {formatToDDMMYYYY(exam.createdAt)}
+                </td>
+                <td className="py-3 px-4 border-b">{exam.password}</td>
                 <td className="py-3 px-4 border-b">
                   <span
                     className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -448,8 +430,6 @@ export default function ExamsManagement() {
                     >
                       View
                     </button>
-
-                    
                   </div>
                 </td>
               </tr>
@@ -723,10 +703,19 @@ export default function ExamsManagement() {
                       </td>
 
                       <td className="py-3 px-4 border-b">
-                        {participant.exams.find(
+                        {Array.isArray(participant?.exams)
+                          ? participant.exams.find(
+                              (item) =>
+                                item.exam_id === currentExam.exam.exam_id
+                            )?.score ?? "N/A"
+                          : "N/A"}
+                      </td>
+
+                      {/* <td className="py-3 px-4 border-b">
+                        {participant?.exams.find(
                           (item) => item.exam_id == currentExam.exam.exam_id
                         )?.score ?? "N/A"}
-                      </td>
+                      </td> */}
 
                       <td className="py-3 px-4 border-b flex justify-center">
                         <button
@@ -748,7 +737,7 @@ export default function ExamsManagement() {
                   {filteredParticipants.length === 0 && (
                     <tr>
                       <td
-                        colSpan="5"
+                        colSpan={5}
                         className="py-4 text-center text-gray-500"
                       >
                         No participants found.

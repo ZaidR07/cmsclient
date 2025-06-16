@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   Search,
-  Filter,
+  Calendar,
   Download,
   Plus,
   ArrowUp,
@@ -43,6 +43,7 @@ export default function StudentsManagement() {
     address: "",
     mobile: "",
     altnumber: "",
+    email: "",
     course: "",
     date: new Date().toISOString().split("T")[0],
     totalPayment: 0,
@@ -61,10 +62,20 @@ export default function StudentsManagement() {
   const [deletemodalopen, setDeleteModalOpen] = useState(false);
   const [formErrors, setFormErrors] = useState({});
 
+  const [paymentPlan, setPaymentPlan] = useState("full"); // 'full' or 'installment'
+  const [installments, setInstallments] = useState([
+    { amount: 0, dueDate: "" },
+  ]);
+  const [installmentFrequency, setInstallmentFrequency] = useState("monthly");
+
   //@ts-expect-error err
   const admindbstate = useSelector((state) => state.admin.db);
 
+  const [courses, setCourses] = useState([]);
+
   const paymentmodes = ["UPI", "Cash", "Cheque", "Other"];
+
+  const [numberOfInstallments, setNumberOfInstallments] = useState(1);
 
   // Filter students when search term changes
   useEffect(() => {
@@ -158,6 +169,63 @@ export default function StudentsManagement() {
     setPhotoPreview(null);
   };
 
+  // Add this useEffect hook to your component
+  useEffect(() => {
+    if (paymentPlan === "installment" && newStudent.balance > 0) {
+      // Calculate equal installment amounts
+      const installmentAmount = Math.floor(
+        newStudent.balance / numberOfInstallments
+      );
+      const remainder = newStudent.balance % numberOfInstallments;
+
+      // Generate installments based on numberOfInstallments
+      const calculatedInstallments = Array.from(
+        { length: numberOfInstallments },
+        (_, index) => ({
+          amount:
+            index === 0 ? installmentAmount + remainder : installmentAmount,
+          dueDate:
+            calculateDueDates(
+              newStudent.date,
+              installmentFrequency,
+              numberOfInstallments
+            )[index] || "",
+          description: `Installment ${index + 1}`,
+        })
+      );
+
+      setInstallments(calculatedInstallments);
+    } else {
+      // If not in installment mode or no balance, reset to single installment
+      setInstallments([{ amount: 0, dueDate: "" }]);
+    }
+  }, [
+    newStudent.balance,
+    paymentPlan,
+    installmentFrequency,
+    newStudent.date,
+    numberOfInstallments,
+  ]);
+
+  // Update the calculateDueDates function to accept count parameter
+  const calculateDueDates = (startDate, frequency, count) => {
+    const dates = [];
+    const date = new Date(startDate);
+
+    for (let i = 0; i < count; i++) {
+      const newDate = new Date(date);
+      if (frequency === "monthly") {
+        newDate.setMonth(date.getMonth() + i + 1);
+      } else if (frequency === "bimonthly") {
+        newDate.setMonth(date.getMonth() + (i + 1) * 2);
+      } else if (frequency === "quarterly") {
+        newDate.setMonth(date.getMonth() + (i + 1) * 3);
+      }
+      dates.push(newDate.toISOString().split("T")[0]);
+    }
+    return dates;
+  };
+
   // Handle input change for new student form
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -231,15 +299,6 @@ export default function StudentsManagement() {
       errors.qualification = "Qualification is required";
       isValid = false;
     }
-    if (!newStudent.adhaar.trim()) {
-      //@ts-expect-error err
-      errors.adhaar = "Aadhaar number is required";
-      isValid = false;
-    } else if (newStudent.adhaar.length !== 12) {
-      //@ts-expect-error err
-      errors.adhaar = "Aadhaar must be 12 digits";
-      isValid = false;
-    }
     if (!newStudent.address.trim()) {
       //@ts-expect-error err
       errors.address = "Address is required";
@@ -252,6 +311,11 @@ export default function StudentsManagement() {
     } else if (newStudent.mobile.length !== 10) {
       //@ts-expect-error err
       errors.mobile = "Mobile must be 10 digits";
+      isValid = false;
+    }
+    if (!newStudent.email) {
+      //@ts-expect-error err
+      errors.email = "Email is required";
       isValid = false;
     }
     if (!newStudent.course.trim()) {
@@ -274,9 +338,13 @@ export default function StudentsManagement() {
       errors.chequeNo = "Cheque number is required for Cheque payment";
       isValid = false;
     }
-    if (newStudent.paymentmode === "Other" && !newStudent.otherPaymentMode.trim()) {
+    if (
+      newStudent.paymentmode === "Other" &&
+      !newStudent.otherPaymentMode.trim()
+    ) {
       //@ts-expect-error err
-      errors.otherPaymentMode = "Payment mode name is required for Other payment";
+      errors.otherPaymentMode =
+        "Payment mode name is required for Other payment";
       isValid = false;
     }
 
@@ -317,6 +385,20 @@ export default function StudentsManagement() {
 
       formData.append("folder", admindbstate);
 
+      // Add installments as individual entries
+      if (paymentPlan === "installment") {
+        const validInstallments = installments.filter(
+          (inst) => inst.amount > 0 && inst.dueDate
+        );
+
+        validInstallments.forEach((installment, index) => {
+          formData.append(`installments[${index}][amount]`, installment.amount);
+          formData.append(
+            `installments[${index}][dueDate]`,
+            installment.dueDate
+          );
+        });
+      }
       // Make API call with multipart/form-data
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}addupdatestudent`,
@@ -324,6 +406,7 @@ export default function StudentsManagement() {
       );
 
       toast.success(response.data?.message);
+
       setShowAddForm(false);
 
       // Reset form
@@ -340,6 +423,7 @@ export default function StudentsManagement() {
         address: "",
         mobile: "",
         altnumber: "",
+        email: "",
         course: "",
         date: new Date().toISOString().split("T")[0],
         totalPayment: 0,
@@ -353,6 +437,7 @@ export default function StudentsManagement() {
       });
       setPhotoPreview(null);
       setFormErrors({});
+
       LoadData();
     } catch (error) {
       if (error.response?.data?.message) {
@@ -422,23 +507,50 @@ export default function StudentsManagement() {
   };
 
   const LoadData = useCallback(async () => {
+    setIsLoading(true);
+
     try {
-      setIsLoading(true);
-      const response = await axios.get(
+      // Run both independently to avoid one failing the other
+      const studentPromise = axios.get(
         `${process.env.NEXT_PUBLIC_API_URL}getstudents`,
         {
           params: { db: admindbstate },
         }
       );
 
-      setStudents(response.data.payload);
-      setFilteredStudents(response.data.payload);
-    } catch (error) {
-      console.error("Error fetching students:", error);
-      //@ts-expect-error err
-      setStudents([]);
-      //@ts-expect-error err
-      setFilteredStudents([]);
+      const coursePromise = axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL}getcourses`,
+        {
+          params: { db: admindbstate },
+        }
+      );
+
+      const [studentsRes, coursesRes] = await Promise.allSettled([
+        studentPromise,
+        coursePromise,
+      ]);
+
+      // Handle students response
+      if (studentsRes.status === "fulfilled") {
+        const students = studentsRes.value.data?.payload || [];
+        setStudents(students);
+        setFilteredStudents(students);
+      } else {
+        console.error("Failed to fetch students:", studentsRes.reason);
+        setStudents([]);
+        setFilteredStudents([]);
+      }
+
+      // Handle courses response
+      if (coursesRes.status === "fulfilled") {
+        const courses = coursesRes.value.data?.payload || [];
+        setCourses(courses);
+      } else {
+        console.error("Failed to fetch courses:", coursesRes.reason);
+        setCourses([]);
+      }
+    } catch (err) {
+      console.error("Unexpected error:", err);
     } finally {
       setIsLoading(false);
     }
@@ -449,7 +561,7 @@ export default function StudentsManagement() {
   }, [LoadData]);
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6">
+    <div className="bg-white  rounded-lg shadow-sm p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold">Students Management</h2>
         <div className="flex items-center space-x-3">
@@ -474,7 +586,10 @@ export default function StudentsManagement() {
             <span>Import Excel</span>
           </button>
           <button
-            onClick={() => setShowAddForm(true)}
+            onClick={() => {
+              setShowAddForm(true);
+              setFormErrors({});
+            }}
             className="flex items-center space-x-1 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
           >
             <Plus size={18} />
@@ -484,25 +599,13 @@ export default function StudentsManagement() {
       </div>
 
       {/* Student Table */}
-      <div className="overflow-x-auto">
-        <table className="min-w-full bg-white border border-gray-200">
+      <div className="overflow-x-scroll">
+        <table className="min-w-full overflow-x-scroll border border-gray-200">
           <thead>
             <tr className="bg-gray-50">
-              <th
-                className="py-2 px-4 border-b cursor-pointer"
-                onClick={() => handleSort("id")}
-              >
+              <th className="py-2 px-4 border-b cursor-pointer">
                 <div className="flex items-center">
                   <span>ID</span>
-                  {sortColumn === "id" && (
-                    <span className="ml-1">
-                      {sortDirection === "asc" ? (
-                        <ArrowUp size={14} />
-                      ) : (
-                        <ArrowDown size={14} />
-                      )}
-                    </span>
-                  )}
                 </div>
               </th>
               <th
@@ -522,55 +625,24 @@ export default function StudentsManagement() {
                   )}
                 </div>
               </th>
-              <th
-                className="py-2 px-4 border-b cursor-pointer"
-                onClick={() => handleSort("course")}
-              >
+              <th className="py-2 px-4 border-b cursor-pointer">
                 <div className="flex items-center">
                   <span>Course</span>
-                  {sortColumn === "course" && (
-                    <span className="ml-1">
-                      {sortDirection === "asc" ? (
-                        <ArrowUp size={14} />
-                      ) : (
-                        <ArrowDown size={14} />
-                      )}
-                    </span>
-                  )}
                 </div>
               </th>
-              <th
-                className="py-2 px-4 border-b cursor-pointer"
-                onClick={() => handleSort("mobile")}
-              >
+              <th className="py-2 px-4 border-b cursor-pointer">
                 <div className="flex items-center">
                   <span>Mobile</span>
-                  {sortColumn === "mobile" && (
-                    <span className="ml-1">
-                      {sortDirection === "asc" ? (
-                        <ArrowUp size={14} />
-                      ) : (
-                        <ArrowDown size={14} />
-                      )}
-                    </span>
-                  )}
                 </div>
               </th>
-              <th
-                className="py-2 px-4 border-b cursor-pointer"
-                onClick={() => handleSort("date")}
-              >
+              <th className="py-2 px-4 border-b cursor-pointer">
+                <div className="flex items-center">
+                  <span>Email</span>
+                </div>
+              </th>
+              <th className="py-2 px-4 border-b cursor-pointer">
                 <div className="flex items-center">
                   <span>Date</span>
-                  {sortColumn === "date" && (
-                    <span className="ml-1">
-                      {sortDirection === "asc" ? (
-                        <ArrowUp size={14} />
-                      ) : (
-                        <ArrowDown size={14} />
-                      )}
-                    </span>
-                  )}
                 </div>
               </th>
               <th
@@ -579,32 +651,11 @@ export default function StudentsManagement() {
               >
                 <div className="flex items-center">
                   <span>Total</span>
-                  {sortColumn === "totalPayment" && (
-                    <span className="ml-1">
-                      {sortDirection === "asc" ? (
-                        <ArrowUp size={14} />
-                      ) : (
-                        <ArrowDown size={14} />
-                      )}
-                    </span>
-                  )}
                 </div>
               </th>
-              <th
-                className="py-2 px-4 border-b cursor-pointer"
-                onClick={() => handleSort("balance")}
-              >
+              <th className="py-2 px-4 border-b cursor-pointer">
                 <div className="flex items-center">
                   <span>Balance</span>
-                  {sortColumn === "balance" && (
-                    <span className="ml-1">
-                      {sortDirection === "asc" ? (
-                        <ArrowUp size={14} />
-                      ) : (
-                        <ArrowDown size={14} />
-                      )}
-                    </span>
-                  )}
                 </div>
               </th>
               <th className="py-2 px-4 border-b">Actions</th>
@@ -619,8 +670,13 @@ export default function StudentsManagement() {
                   {student.middleName && student.middleName + " "}
                   {student.lastName}
                 </td>
-                <td className="py-3 px-4 border-b">{student.course}</td>
+                <td className="py-3 px-4 border-b">
+                  {courses.find((item) => item.course_id == student.course)
+                    ?.course_name ?? "N/A"}
+                </td>
+
                 <td className="py-3 px-4 border-b">{student.mobile}</td>
+                <td className="py-3 px-4 border-b">{student.email}</td>
                 <td className="py-3 px-4 border-b">{student.date}</td>
                 <td className="py-3 px-4 border-b">₹{student.totalPayment}</td>
                 <td className="py-3 px-4 border-b">₹{student.balance}</td>
@@ -629,6 +685,7 @@ export default function StudentsManagement() {
                     <button
                       onClick={() => {
                         setShowAddForm(true);
+                        setFormErrors({});
                         HandleUpdate(student.student_id);
                       }}
                       className="text-blue-500 hover:text-blue-700"
@@ -933,7 +990,7 @@ export default function StudentsManagement() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Aadhaar Number <span className="text-red-500">*</span>
+                  Aadhaar Number
                 </label>
                 <input
                   type="text"
@@ -946,11 +1003,6 @@ export default function StudentsManagement() {
                   placeholder="12-digit Aadhaar Number"
                   required
                 />
-                {formErrors.adhaar && (
-                  <p className="text-xs text-red-500 mt-1">
-                    {formErrors.adhaar}
-                  </p>
-                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -986,6 +1038,26 @@ export default function StudentsManagement() {
                   placeholder="Alternative Number (Optional)"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email<span className="text-red-500">&nbsp;*</span>
+                </label>
+                <input
+                  type="text"
+                  name="email"
+                  value={newStudent.email}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  placeholder="Email"
+                  required
+                />
+                {formErrors.email && (
+                  <p className="text-xs text-red-500 mt-1">
+                    {formErrors.email}
+                  </p>
+                )}
+              </div>
+
               <div className="md:col-span-3">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Address <span className="text-red-500">*</span>
@@ -1011,23 +1083,30 @@ export default function StudentsManagement() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Course <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  name="course"
-                  value={newStudent.course}
-                  onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border ${
+                <select
+                  className={`w-full px-2 py-2 border ${
                     formErrors.course ? "border-red-500" : "border-gray-300"
                   } rounded-md`}
                   placeholder="Course Name"
+                  onChange={handleInputChange}
                   required
-                />
+                  name="course"
+                >
+                  <option value="">Select a Course</option>
+                  {courses?.length > 0 &&
+                    courses.map((item, index) => (
+                      <option key={index} value={item.course_id}>
+                        {item.course_name}
+                      </option>
+                    ))}
+                </select>
                 {formErrors.course && (
                   <p className="text-xs text-red-500 mt-1">
                     {formErrors.course}
                   </p>
                 )}
               </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Admission Date <span className="text-red-500">*</span>
@@ -1096,6 +1175,7 @@ export default function StudentsManagement() {
                   disabled={update}
                 />
               </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Payment Mode <span className="text-red-500">*</span>
@@ -1105,7 +1185,9 @@ export default function StudentsManagement() {
                   value={newStudent.paymentmode}
                   onChange={handleInputChange}
                   className={`w-full px-3 py-2 border ${
-                    formErrors.paymentmode ? "border-red-500" : "border-gray-300"
+                    formErrors.paymentmode
+                      ? "border-red-500"
+                      : "border-gray-300"
                   } rounded-md`}
                   required
                   disabled={update}
@@ -1186,6 +1268,141 @@ export default function StudentsManagement() {
                   disabled
                 />
               </div>
+            </div>
+
+            <div className="md:col-span-3 border-t pt-4 mt-4">
+              <h4 className="font-medium mb-3">Payment Plan</h4>
+              <div className="flex gap-4 mb-4">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="paymentPlan"
+                    checked={paymentPlan === "full"}
+                    onChange={() => setPaymentPlan("full")}
+                    className="mr-2"
+                  />
+                  Full Payment
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="paymentPlan"
+                    checked={paymentPlan === "installment"}
+                    onChange={() => setPaymentPlan("installment")}
+                    className="mr-2"
+                  />
+                  Installment Payment
+                </label>
+              </div>
+
+              {paymentPlan === "installment" && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Number of Installments (Max 3)
+                    </label>
+                    <select
+                      value={numberOfInstallments}
+                      onChange={(e) => {
+                        const count = parseInt(e.target.value);
+                        setNumberOfInstallments(count);
+                        // No need to set installments here since useEffect will handle it
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    >
+                      <option value="1">1</option>
+                      <option value="2">2</option>
+                      <option value="3">3</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Installment Frequency
+                    </label>
+                    <select
+                      value={installmentFrequency}
+                      onChange={(e) => {
+                        const frequency = e.target.value;
+                        setInstallmentFrequency(frequency);
+                        const dueDates = calculateDueDates(
+                          newStudent.date,
+                          frequency,
+                          3
+                        );
+                        setInstallments((prevInstallments) =>
+                          prevInstallments.map((inst, i) => ({
+                            ...inst,
+                            dueDate: dueDates[i] || "",
+                          }))
+                        );
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    >
+                      <option value="monthly">Monthly</option>
+                      <option value="bimonthly">
+                        Bi-Monthly (Every 2 Months)
+                      </option>
+                      <option value="quarterly">
+                        Quarterly (Every 3 Months)
+                      </option>
+                    </select>
+                  </div>
+
+                  {installments.map((installment, index) => (
+                    <div key={index} className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Installment {index + 1} Amount (₹)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={installment.amount || ""}
+                          onChange={(e) => {
+                            setInstallments((prev) =>
+                              prev.map((inst, i) =>
+                                i === index
+                                  ? {
+                                      ...inst,
+                                      amount: parseFloat(e.target.value) || 0,
+                                    }
+                                  : inst
+                              )
+                            );
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Due Date
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="date"
+                            value={installment.dueDate}
+                            onChange={(e) => {
+                              setInstallments((prev) =>
+                                prev.map((inst, i) =>
+                                  i === index
+                                    ? { ...inst, dueDate: e.target.value }
+                                    : inst
+                                )
+                              );
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                            min={newStudent.date} // Can't be before admission date
+                          />
+                          <Calendar
+                            className="absolute right-3 top-2.5 text-gray-400"
+                            size={18}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="mt-6 flex justify-end space-x-3">
