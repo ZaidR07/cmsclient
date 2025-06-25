@@ -1,3 +1,6 @@
+/* eslint-disable */
+// @ts-nocheck
+
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import {
@@ -47,7 +50,7 @@ export default function ExamsManagement() {
   // State management
   const [exams, setExams] = useState<Exams>([]);
   const [filteredExams, setFilteredExams] = useState<Exams>([]);
-  const [excelData, setExcelData] = useState<any[]>([]);
+  
   const [showExcelPreview, setShowExcelPreview] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [examsPerPage] = useState(5);
@@ -124,8 +127,7 @@ export default function ExamsManagement() {
           correct: row.correct || "",
         };
       });
-
-      setExcelData(parsedData); // Store raw data for preview
+ // Store raw data for preview
       setNewExam((prev) => ({
         ...prev,
         questions: questions,
@@ -259,28 +261,12 @@ export default function ExamsManagement() {
       });
       setIsLoading(false);
       setShowAddForm(false);
-      setExcelData([]);
+    
       setShowExcelPreview(false);
     }
   };
 
-  // Generate certificate for a single student
-  const generateCertificate = (examId: string, studentId: string) => {
-    
-  };
-
-  // Generate certificates for all students
-  const generateAllCertificates = (examId: string) => {
-    console.log(`Generating certificates for all students in exam ${examId}`);
-    setSuccessMessage(
-      `Certificates generated for all students in exam ID: ${examId}`
-    );
-
-    setTimeout(() => {
-      setSuccessMessage("");
-    }, 3000);
-  };
-
+  
   return (
     <div className="bg-white rounded-lg shadow-sm p-6">
       <div className="flex justify-between items-center mb-6">
@@ -478,7 +464,7 @@ export default function ExamsManagement() {
               <button
                 onClick={() => {
                   setShowAddForm(false);
-                  setExcelData([]);
+                
                   setShowExcelPreview(false);
                 }}
                 className="text-gray-500 hover:text-gray-700"
@@ -670,13 +656,7 @@ export default function ExamsManagement() {
                   size={18}
                 />
               </div>
-              <button
-                onClick={() => generateAllCertificates(currentExam.exam_id)}
-                className="flex items-center space-x-1 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600"
-              >
-                <Award size={18} />
-                <span>Generate All Certificates</span>
-              </button>
+              
             </div>
 
             <div className="overflow-x-auto">
@@ -686,7 +666,7 @@ export default function ExamsManagement() {
                     <th className="py-2 px-4 border-b">Student ID</th>
                     <th className="py-2 px-4 border-b">Name</th>
                     <th className="py-2 px-4 border-b">Score</th>
-                    <th className="py-2 px-4 border-b">Actions</th>
+                    
                   </tr>
                 </thead>
                 <tbody>
@@ -711,27 +691,7 @@ export default function ExamsManagement() {
                           : "N/A"}
                       </td>
 
-                      {/* <td className="py-3 px-4 border-b">
-                        {participant?.exams.find(
-                          (item) => item.exam_id == currentExam.exam.exam_id
-                        )?.score ?? "N/A"}
-                      </td> */}
-
-                      <td className="py-3 px-4 border-b flex justify-center">
-                        <button
-                          onClick={() =>
-                            generateCertificate(
-                              currentExam.exam_id,
-                              participant.id
-                            )
-                          }
-                          className="flex items-center justify-center text-green-500 hover:text-green-700"
-                          disabled={!participant.completed}
-                        >
-                          <Award size={16} className="mr-1" />
-                          Generate Certificate
-                        </button>
-                      </td>
+                    
                     </tr>
                   ))}
                   {filteredParticipants.length === 0 && (
@@ -751,7 +711,7 @@ export default function ExamsManagement() {
             <div className="mt-6 flex justify-end">
               <button
                 onClick={() => setShowParticipantsModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                className="px-4 py-2 border border-gray-300 rounded-md text-red-700 hover:bg-gray-50"
               >
                 Close
               </button>

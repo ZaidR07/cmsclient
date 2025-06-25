@@ -1,3 +1,6 @@
+/* eslint-disable */
+// @ts-nocheck
+
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import {
@@ -45,6 +48,7 @@ export default function StudentsManagement() {
     altnumber: "",
     email: "",
     course: "",
+    session: "",
     date: new Date().toISOString().split("T")[0],
     totalPayment: 0,
     discount: 0,
@@ -73,9 +77,16 @@ export default function StudentsManagement() {
 
   const [courses, setCourses] = useState([]);
 
+  const [previousstudents, setPreviousStudents] = useState([]);
+
   const paymentmodes = ["UPI", "Cash", "Cheque", "Other"];
 
   const [numberOfInstallments, setNumberOfInstallments] = useState(1);
+
+  const [sessionoptions, setSessionOptions] = useState([]);
+
+  const [showPreviousStudents, setShowPreviousStudents] = useState(false);
+  const [previousStudentSearch, setPreviousStudentSearch] = useState("");
 
   // Filter students when search term changes
   useEffect(() => {
@@ -94,6 +105,26 @@ export default function StudentsManagement() {
       setFilteredStudents(students);
     }
   }, [searchTerm, students]);
+
+  useEffect(() => {
+    // Get current date
+    const now = new Date();
+    const currentYear = now.getFullYear();
+
+    // Create the array
+    const yearArray = [
+      {
+        display: `${currentYear} - ${currentYear + 1}`,
+        value: currentYear + 1,
+      },
+      {
+        display: `${currentYear + 1} - ${currentYear + 2}`,
+        value: currentYear + 2,
+      },
+    ];
+
+    setSessionOptions(yearArray);
+  }, []);
 
   // Sort students when sort column or direction changes
   useEffect(() => {
@@ -226,11 +257,21 @@ export default function StudentsManagement() {
     return dates;
   };
 
-  // Handle input change for new student form
   const handleInputChange = (e) => {
     const { name, value } = e.target;
 
-    if (name === "totalPayment" || name === "discount" || name === "payment") {
+    if (name == "course") {
+      const selectedCourse = courses.find((item) => item.course_id == value);
+      setNewStudent({
+        ...newStudent,
+        [name]: value,
+        totalPayment: selectedCourse ? selectedCourse.discountedprice : 0, // Assuming 'fee' is the course price
+      });
+    } else if (
+      name === "totalPayment" ||
+      name === "discount" ||
+      name === "payment"
+    ) {
       const total =
         name === "totalPayment"
           ? parseFloat(value) || 0
@@ -244,19 +285,18 @@ export default function StudentsManagement() {
           ? parseFloat(value) || 0
           : parseFloat(newStudent.payment) || 0;
 
-      const balance = total - discount - payment;
-
       setNewStudent({
         ...newStudent,
-        [name]: value,
-        balance: balance >= 0 ? balance : 0,
+        [name]: parseFloat(value) || 0, // Store as number
+        balance: Math.max(total - discount - payment, 0),
       });
     } else if (name === "paymentmode") {
       setNewStudent({
         ...newStudent,
         [name]: value,
-        chequeNo: value === "Cheque" ? newStudent.chequeNo : "",
-        otherPaymentMode: value === "Other" ? newStudent.otherPaymentMode : "",
+        chequeNo: value === "Cheque" ? newStudent.chequeNo || "" : "",
+        otherPaymentMode:
+          value === "Other" ? newStudent.otherPaymentMode || "" : "",
       });
     } else {
       setNewStudent({
@@ -265,8 +305,8 @@ export default function StudentsManagement() {
       });
     }
 
-    // Clear error when field is filled
-    if (value && formErrors[name]) {
+    // Clear error for non-empty, non-whitespace input
+    if (value.trim() && formErrors[name]) {
       setFormErrors({
         ...formErrors,
         [name]: null,
@@ -328,9 +368,24 @@ export default function StudentsManagement() {
       errors.photo = "Photo is required";
       isValid = false;
     }
+    if (!newStudent.payment || newStudent.payment <= 0) {
+      //@ts-expect-error err
+      errors.payment = "payment must be greater than 0";
+      isValid = false;
+    }
     if (newStudent.totalPayment <= 0) {
       //@ts-expect-error err
       errors.totalPayment = "Total payment must be greater than 0";
+      isValid = false;
+    }
+    if (!newStudent.session) {
+      //@ts-expect-error err
+      errors.session = "Session is required";
+      isValid = false;
+    }
+    if (newStudent.paymentmode === "") {
+      //@ts-expect-error err
+      errors.paymentmode = "Payment mode is required";
       isValid = false;
     }
     if (newStudent.paymentmode === "Cheque" && !newStudent.chequeNo.trim()) {
@@ -362,6 +417,7 @@ export default function StudentsManagement() {
   };
 
   // Handle form submission
+  // Handle form submission
   const handleSubmit = async () => {
     if (!newStudent.student_id) {
       if (!validateForm()) {
@@ -379,11 +435,27 @@ export default function StudentsManagement() {
         if (key === "photo" && newStudent.photo) {
           formData.append("photo", newStudent.photo);
         } else {
-          formData.append(key, newStudent[key]);
+          // Only add payment/installment fields if not in update mode
+          if (
+            !update ||
+            (key !== "totalPayment" &&
+              key !== "discount" &&
+              key !== "payment" &&
+              key !== "balance" &&
+              key !== "paymentmode" &&
+              key !== "chequeNo" &&
+              key !== "otherPaymentMode")
+          ) {
+            formData.append(key, newStudent[key]);
+          }
         }
       });
 
       formData.append("folder", admindbstate);
+
+      formData.append("paymentPlan", paymentPlan);
+      formData.append("numberOfInstallments", numberOfInstallments.toString());
+      formData.append("installmentFrequency", installmentFrequency);
 
       // Add installments as individual entries
       if (paymentPlan === "installment") {
@@ -399,6 +471,7 @@ export default function StudentsManagement() {
           );
         });
       }
+
       // Make API call with multipart/form-data
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}addupdatestudent`,
@@ -406,7 +479,6 @@ export default function StudentsManagement() {
       );
 
       toast.success(response.data?.message);
-
       setShowAddForm(false);
 
       // Reset form
@@ -425,6 +497,7 @@ export default function StudentsManagement() {
         altnumber: "",
         email: "",
         course: "",
+        session: "",
         date: new Date().toISOString().split("T")[0],
         totalPayment: 0,
         discount: 0,
@@ -560,6 +633,23 @@ export default function StudentsManagement() {
     LoadData();
   }, [LoadData]);
 
+  const LoadPreviousStudents = async () => {
+    try {
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL}getpreviousyearsstudents`,
+        {
+          params: { db: admindbstate },
+        }
+      );
+
+      setPreviousStudents(response.data.payload);
+    } catch (err) {
+      console.error("Unexpected error:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="bg-white  rounded-lg shadow-sm p-6">
       <div className="flex justify-between items-center mb-6">
@@ -579,7 +669,8 @@ export default function StudentsManagement() {
             />
           </div>
           <button
-            onClick={() => setExcelUploadOpen(true)}
+            onClick={() => toast("This feature will be available soon")}
+            // onClick={() => setExcelUploadOpen(true)}
             className="flex items-center space-x-1 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600"
           >
             <Download size={18} />
@@ -587,8 +678,35 @@ export default function StudentsManagement() {
           </button>
           <button
             onClick={() => {
+              LoadPreviousStudents();
               setShowAddForm(true);
               setFormErrors({});
+              setNewStudent({
+                form_no: "",
+                student_id: "",
+                firstName: "",
+                middleName: "",
+                lastName: "",
+                dob: "",
+                gender: "Male",
+                qualification: "",
+                adhaar: "",
+                address: "",
+                mobile: "",
+                altnumber: "",
+                email: "",
+                course: "",
+                session: "",
+                date: new Date().toISOString().split("T")[0],
+                totalPayment: 0,
+                discount: 0,
+                payment: 0,
+                balance: 0,
+                paymentmode: "",
+                chequeNo: "",
+                otherPaymentMode: "",
+                photo: null,
+              });
             }}
             className="flex items-center space-x-1 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
           >
@@ -816,6 +934,104 @@ export default function StudentsManagement() {
               >
                 <X size={20} />
               </button>
+            </div>
+
+            {/* Previous Students Section */}
+            <div className="md:col-span-3 mb-4">
+              <button
+                type="button"
+                onClick={() => setShowPreviousStudents(!showPreviousStudents)}
+                className="flex items-center text-blue-500 hover:text-blue-700 mb-2"
+              >
+                <span className="mr-1">
+                  {showPreviousStudents ? "Hide" : "Show"} previous year
+                  students
+                </span>
+                {showPreviousStudents ? (
+                  <ArrowUp size={16} />
+                ) : (
+                  <ArrowDown size={16} />
+                )}
+              </button>
+
+              {showPreviousStudents && (
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="relative mb-3">
+                    <input
+                      type="text"
+                      placeholder="Search previous students..."
+                      className="pl-10 pr-4 py-2 w-full border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={previousStudentSearch}
+                      onChange={(e) => setPreviousStudentSearch(e.target.value)}
+                    />
+                    <Search
+                      className="absolute left-3 top-2.5 text-gray-400"
+                      size={18}
+                    />
+                  </div>
+
+                  <div className="max-h-60 overflow-y-auto">
+                    {previousstudents
+                      ?.filter(
+                        (student) =>
+                          student &&
+                          `${student.firstName || ""} ${
+                            student.lastName || ""
+                          } ${student.student_id || ""}`
+                            .toLowerCase()
+                            .includes(previousStudentSearch.toLowerCase())
+                      )
+                      .slice(0, 5) // Show only first 5 filtered students
+                      .map((student) => (
+                        <div
+                          key={student.student_id}
+                          className="p-3 border-b hover:bg-gray-100 cursor-pointer flex justify-between items-center"
+                          onClick={() => {
+                            // Populate form fields
+                            setNewStudent({
+                              ...student,
+                              course: "",
+                              session: "",
+                              date: new Date().toISOString().split("T")[0],
+                              totalPayment: 0,
+                              discount: 0,
+                              payment: 0,
+                              balance: 0,
+                              paymentmode: "",
+                              chequeNo: "",
+                              otherPaymentMode: "",
+                              photo: null,
+                            });
+
+                            // Set photo preview if available
+                            if (student.photoUrl) {
+                              setPhotoPreview(student.photoUrl);
+                            }
+
+                            setShowPreviousStudents(false);
+                            setPreviousStudentSearch("");
+                          }}
+                        >
+                          <div>
+                            <p className="font-medium">
+                              {student.firstName} {student.lastName}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              ID: {student.student_id} | Course:{" "}
+                              {courses.find(
+                                (c) => c.course_id === student.course
+                              )?.course_name || "N/A"}
+                            </p>
+                          </div>
+                          <span className="text-sm text-gray-500">
+                            {student.session - 1} -&nbsp;
+                            {student.session} session
+                          </span>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1091,6 +1307,8 @@ export default function StudentsManagement() {
                   onChange={handleInputChange}
                   required
                   name="course"
+                  value={newStudent.course}
+                  disabled={update}
                 >
                   <option value="">Select a Course</option>
                   {courses?.length > 0 &&
@@ -1106,6 +1324,35 @@ export default function StudentsManagement() {
                   </p>
                 )}
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Session <span className="text-blue-500">*</span>
+                </label>
+                <select
+                  className={`w-full px-2 py-2 border ${
+                    formErrors.session ? "border-red-500" : "border-gray-300"
+                  } rounded-md`}
+                  placeholder="Eg. 2025"
+                  onChange={handleInputChange}
+                  required
+                  name="session"
+                  value={newStudent.session}
+                  disabled={update}
+                >
+                  <option value="">Select Session</option>
+                  {sessionoptions?.length > 0 &&
+                    sessionoptions.map((item, index) => (
+                      <option key={index} value={item.value}>
+                        {item.display}
+                      </option>
+                    ))}
+                </select>
+                {formErrors.session && (
+                  <p className="text-xs text-red-500 mt-1">
+                    {formErrors.session}
+                  </p>
+                )}
+              </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1117,9 +1364,10 @@ export default function StudentsManagement() {
                   value={newStudent.date}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  required
+                  disabled={update}
                 />
               </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Total Payment (₹) <span className="text-red-500">*</span>
@@ -1174,6 +1422,11 @@ export default function StudentsManagement() {
                   min="0"
                   disabled={update}
                 />
+                {formErrors.payment && (
+                  <p className="text-xs text-red-500 mt-1">
+                    {formErrors.payment}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -1280,6 +1533,7 @@ export default function StudentsManagement() {
                     checked={paymentPlan === "full"}
                     onChange={() => setPaymentPlan("full")}
                     className="mr-2"
+                    disabled={update}
                   />
                   Full Payment
                 </label>
@@ -1290,6 +1544,7 @@ export default function StudentsManagement() {
                     checked={paymentPlan === "installment"}
                     onChange={() => setPaymentPlan("installment")}
                     className="mr-2"
+                    disabled={update}
                   />
                   Installment Payment
                 </label>
@@ -1309,6 +1564,7 @@ export default function StudentsManagement() {
                         // No need to set installments here since useEffect will handle it
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      disabled={update}
                     >
                       <option value="1">1</option>
                       <option value="2">2</option>
@@ -1337,6 +1593,7 @@ export default function StudentsManagement() {
                         );
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      disabled={update}
                     >
                       <option value="monthly">Monthly</option>
                       <option value="bimonthly">
@@ -1371,6 +1628,7 @@ export default function StudentsManagement() {
                             );
                           }}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                          disabled={update}
                         />
                       </div>
                       <div>
@@ -1392,6 +1650,7 @@ export default function StudentsManagement() {
                             }}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md"
                             min={newStudent.date} // Can't be before admission date
+                            disabled={update}
                           />
                           <Calendar
                             className="absolute right-3 top-2.5 text-gray-400"

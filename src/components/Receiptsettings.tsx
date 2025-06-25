@@ -1,11 +1,12 @@
+/* eslint-disable */
+// @ts-nocheck
+
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { toast, ToastContainer } from "react-toastify";
 import { useSelector } from "react-redux";
 
-
 const Receiptsettings = () => {
- 
   const [receiptSettings, setReceiptSettings] = useState({
     logo: null,
     headerBackground: "#000000",
@@ -18,7 +19,11 @@ const Receiptsettings = () => {
     address: "",
     notes: [""],
     signature: null,
+    template: "", // New template field
   });
+
+  const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
 
   //@ts-expect-error err
   const admindbstate = useSelector((state) => state.admin.db);
@@ -28,20 +33,50 @@ const Receiptsettings = () => {
       ...prev,
       [field]: value,
     }));
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors((prev) => ({
+        ...prev,
+        [field]: "",
+      }));
+    }
   };
 
   const handleImageUpload = (field, event) => {
     const file = event.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setReceiptSettings((prev) => ({
-          ...prev,
-          [field]: e.target.result,
-        }));
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      setErrors((prev) => ({
+        ...prev,
+        [field]: "Please select a valid image file",
+      }));
+      return;
     }
+
+    // Validate file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      setErrors((prev) => ({
+        ...prev,
+        [field]: "File size should be less than 5MB",
+      }));
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setReceiptSettings((prev) => ({
+        ...prev,
+        [field]: e.target.result,
+      }));
+      // Clear any existing errors
+      setErrors((prev) => ({
+        ...prev,
+        [field]: "",
+      }));
+    };
+    reader.readAsDataURL(file);
   };
 
   const addNote = () => {
@@ -67,6 +102,21 @@ const Receiptsettings = () => {
     }
   };
 
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!receiptSettings.companyName.trim()) {
+      newErrors.companyName = "Company name is required";
+    }
+
+    if (!receiptSettings.template.trim()) {
+      newErrors.template = "HTML template is required";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const fetchReceiptSettings = async () => {
     try {
       const response = await axios.get(
@@ -79,7 +129,7 @@ const Receiptsettings = () => {
       const data = response.data.payload;
 
       if (data && data.length > 0) {
-        const settings = data[0]; // Assuming it's one document
+        const settings = data[0];
         setReceiptSettings((prev) => ({
           ...prev,
           logo: settings.logo || null,
@@ -94,16 +144,22 @@ const Receiptsettings = () => {
           notes:
             settings.notes && settings.notes.length > 0 ? settings.notes : [""],
           signature: settings.signature || null,
+          template: settings.template || "",
         }));
       }
     } catch (error) {
       console.error("Failed to fetch receipt settings:", error);
-    
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!validateForm()) {
+      return;
+    }
+
+    setLoading(true);
 
     try {
       const formData = new FormData();
@@ -120,13 +176,14 @@ const Receiptsettings = () => {
         "secondHeaderBackground",
         receiptSettings.secondHeaderBackground
       );
+      formData.append("template", receiptSettings.template); // New template field
 
-      // Append notes as JSON string or individual fields
+      // Append notes
       receiptSettings.notes.forEach((note, index) => {
         formData.append(`notes[${index}]`, note);
       });
 
-      // Convert base64 images back to Blob before appending (if needed)
+      // Convert base64 images back to Blob before appending
       const dataURLtoBlob = (dataurl) => {
         const arr = dataurl.split(",");
         const mime = arr[0].match(/:(.*?);/)[1];
@@ -160,7 +217,6 @@ const Receiptsettings = () => {
 
       formData.append("db", admindbstate);
 
-      // Send the formData
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}addupdatereceipt`,
         formData,
@@ -172,26 +228,15 @@ const Receiptsettings = () => {
       );
 
       toast.success(response.data.message);
-      setReceiptSettings({
-        logo: null,
-        headerBackground: "#000000",
-        headerColor: "#ffffff",
-        secondHeaderBackground: "#f5f5f5",
-        companyName: "",
-        highlight: "",
-        contact: "",
-        altContact: "",
-        address: "",
-        notes: [""],
-        signature: null,
-      });
-      fetchReceiptSettings()
+      fetchReceiptSettings();
     } catch (error) {
-      if (error.response.data?.message) {
+      if (error.response?.data?.message) {
         toast.error(error.response.data.message);
       } else {
         toast.error("Something Went Wrong");
       }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -203,8 +248,6 @@ const Receiptsettings = () => {
 
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white">
-      
-
       {/* Receipt Section */}
       <div className="bg-gray-100 rounded-lg p-6 shadow-sm">
         <h2 className="text-2xl font-semibold text-gray-700 mb-6 border-b border-gray-200 pb-3">
@@ -240,20 +283,28 @@ const Receiptsettings = () => {
                 )}
               </label>
             </div>
+            {errors.logo && (
+              <p className="mt-1 text-sm text-red-600">{errors.logo}</p>
+            )}
           </div>
 
           {/* Company Name */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">
-              Company Name
+              Company Name *
             </label>
             <input
               type="text"
               value={receiptSettings.companyName}
               onChange={(e) => handleInputChange("companyName", e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                errors.companyName ? "border-red-500" : "border-gray-300"
+              }`}
               placeholder="Enter company name"
             />
+            {errors.companyName && (
+              <p className="mt-1 text-sm text-red-600">{errors.companyName}</p>
+            )}
           </div>
 
           {/* Header Background Color */}
@@ -391,6 +442,34 @@ const Receiptsettings = () => {
           />
         </div>
 
+        {/* HTML Template Field */}
+        <div className="mt-6 space-y-2">
+          <label className="block text-sm font-medium text-gray-700">
+            HTML Template * (For developers only)
+          </label>
+          <div className="relative">
+            <textarea
+              value={receiptSettings.template}
+              onChange={(e) => handleInputChange("template", e.target.value)}
+              rows={8}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm ${
+                errors.template ? "border-red-500" : "border-gray-300"
+              }`}
+              placeholder="Enter HTML template with template literals for dynamic values"
+            />
+            <div className="absolute top-0 right-0 bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-bl-md rounded-tr-md">
+              WARNING: For developers only
+            </div>
+          </div>
+          {errors.template && (
+            <p className="mt-1 text-sm text-red-600">{errors.template}</p>
+          )}
+          <p className="mt-1 text-xs text-gray-500">
+            Use template literals (e.g., ${"{"}variable{"}"}) for dynamic values
+            in the HTML template.
+          </p>
+        </div>
+
         {/* Notes Section */}
         <div className="mt-6 space-y-2">
           <div className="flex items-center justify-between">
@@ -455,12 +534,21 @@ const Receiptsettings = () => {
               )}
             </label>
           </div>
+          {errors.signature && (
+            <p className="mt-1 text-sm text-red-600">{errors.signature}</p>
+          )}
         </div>
 
         {/* Save Button */}
-        <div onClick={handleSubmit} className="mt-8 flex justify-end">
-          <button className="px-6 py-2 bg-green-500 text-white font-medium rounded-md hover:bg-green-600 transition-colors">
-            Save Receipt Settings
+        <div className="mt-8 flex justify-end">
+          <button
+            onClick={handleSubmit}
+            disabled={loading}
+            className={`px-6 py-2 bg-green-500 text-white font-medium rounded-md hover:bg-green-600 transition-colors ${
+              loading ? "opacity-50 cursor-not-allowed" : ""
+            }`}
+          >
+            {loading ? "Saving..." : "Save Receipt Settings"}
           </button>
         </div>
       </div>
@@ -469,5 +557,4 @@ const Receiptsettings = () => {
   );
 };
 
-export default Receiptsettings
-
+export default Receiptsettings;

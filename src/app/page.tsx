@@ -3,14 +3,14 @@ import { useState } from 'react';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
 import axios from 'axios';
 
-import { UseSelector , useDispatch } from 'react-redux';
+import { useSelector , useDispatch } from 'react-redux';
 
 import { setdb, setEmail, setRank } from '@/slices/adminSlice';
 
 import { useRouter } from 'next/navigation';
 import { toast , ToastContainer } from 'react-toastify';
 import { decryptData } from '@/util/Data_protection';
-import { emit } from 'process';
+
 
 
 export default function LoginPage() {

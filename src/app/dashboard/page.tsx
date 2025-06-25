@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Home,
   Users,
@@ -11,6 +11,9 @@ import {
   Menu,
   X,
   LogOut,
+  UserPlusIcon,
+  IndianRupeeIcon,
+  UserPlus2,
 } from "lucide-react";
 import {
   BarChart,
@@ -26,57 +29,36 @@ import ExamsManagement from "@/components/Exams";
 import CoursesManagement from "@/components/Courses";
 import AdminManagement from "@/components/Admin";
 import { decryptData } from "@/util/Data_protection";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import Settingstab from "@/components/Settings";
 import Feesection from "@/components/Feesection";
-
-// Sample data for the visitors chart
-const visitorData = [
-  { name: "Jan", visitors: 400 },
-  { name: "Feb", visitors: 300 },
-  { name: "Mar", visitors: 600 },
-  { name: "Apr", visitors: 800 },
-  { name: "May", visitors: 500 },
-  { name: "Jun", visitors: 400 },
-  { name: "Jul", visitors: 300 },
-  { name: "Aug", visitors: 500 },
-  { name: "Sep", visitors: 700 },
-  { name: "Oct", visitors: 900 },
-  { name: "Nov", visitors: 600 },
-  { name: "Dec", visitors: 400 },
-];
-
-// Dashboard Stats Data
-const statsData = [
-  {
-    title: "Total Students",
-    count: 1250,
-    icon: <Users size={24} className="text-blue-500" />,
-  },
-  {
-    title: "Total Courses",
-    count: 42,
-    icon: <BookOpen size={24} className="text-green-500" />,
-  },
-  {
-    title: "Upcoming Exams",
-    count: 8,
-    icon: <GraduationCap size={24} className="text-yellow-500" />,
-  },
-  {
-    title: "Pending Fees",
-    count: 63,
-    icon: <DollarSign size={24} className="text-red-500" />,
-  },
-];
+import EnquiryManagement from "@/components/Enquiry";
+import { useCallback } from "react";
+import axios from "axios";
+import { toast } from "react-toastify";
+import { setdb, setEmail, setRank } from "@/slices/adminSlice";
+import { useRouter } from "next/navigation";
 
 export default function Dashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [isLoading, setIsLoading] = useState(false);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
+
+  const [statsData, setStatsData] = useState([]);
+  const [visitorData, setVisitorData] = useState([]);
+
+  const dispatch = useDispatch();
+  const router = useRouter();
+
+  const adminemailstate = useSelector((state: any) => state.admin.email);
+
+  const adminrankstate = useSelector((state: any) => state.admin.rank);
+
+  const admindbstate = useSelector((state: any) => state.admin.db);
 
   const sidebarItems = [
     { icon: <Home size={20} />, label: "Dashboard", value: "dashboard" },
@@ -84,11 +66,62 @@ export default function Dashboard() {
     { icon: <GraduationCap size={20} />, label: "Exams", value: "exams" },
     { icon: <BookOpen size={20} />, label: "Courses", value: "courses" },
     { icon: <DollarSign size={20} />, label: "Fees", value: "fees" },
-    { icon: <UserCog size={20} />, label: "Admin", value: "admin" },
-    { icon: <Settings size={20} />, label: "Settings", value: "settings" },
+    {
+      icon: <UserPlusIcon size={20} />,
+      label: "Enquiries",
+      value: "enquiries",
+    },
+    ...(adminrankstate == "1"
+      ? [
+          { icon: <UserCog size={20} />, label: "Admin", value: "admin" },
+          {
+            icon: <Settings size={20} />,
+            label: "Settings",
+            value: "settings",
+          },
+        ]
+      : []),
   ];
 
-  const adminemailstate = useSelector((state: any) => state.admin.email);
+  // Load open enquiries data
+  const LoadData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      // Fetching stats for cards
+      const statsResponse = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL}getdashboardnumbers`,
+        {
+          params: {
+            db: admindbstate,
+          },
+        }
+      );
+      setStatsData(statsResponse.data.payload || []);
+
+      // Fetching chart data
+      const chartResponse = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL}getvisitornumbers`,
+        {
+          params: {
+            db: admindbstate,
+          },
+        }
+      );
+      setVisitorData(chartResponse.data.payload || []);
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+      toast.error("Failed to Load Dashboard Data");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [admindbstate]);
+
+  // Reload when switching to dashboard tab
+  useEffect(() => {
+    if (activeTab === "dashboard") {
+      LoadData();
+    }
+  }, [activeTab, LoadData]);
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -132,7 +165,15 @@ export default function Dashboard() {
         </div>
 
         <div className="absolute bottom-0 w-full p-4 border-t">
-          <div className="flex items-center cursor-pointer text-red-500 hover:bg-red-50 px-4 py-2 rounded-md">
+          <div
+            onClick={() => {
+              dispatch(setRank(""));
+              dispatch(setdb(""));
+              dispatch(setEmail(""));
+              router.push("/");
+            }}
+            className="flex items-center cursor-pointer text-red-500 hover:bg-red-50 px-4 py-2 rounded-md"
+          >
             <LogOut size={20} />
             {isSidebarOpen && <span className="ml-3 text-sm">Logout</span>}
           </div>
@@ -181,9 +222,26 @@ export default function Dashboard() {
                       <p className="text-sm text-gray-500">{stat.title}</p>
                       <p className="text-2xl font-bold mt-1">{stat.count}</p>
                     </div>
-                    <div className="p-3 bg-gray-50 rounded-full">
-                      {stat.icon}
-                    </div>
+                    {stat.icon == "Users" && (
+                      <div className="p-3 bg-gray-50 rounded-full">
+                        <Users className="text-blue-700" size={28} />
+                      </div>
+                    )}
+                    {stat.icon == "Course" && (
+                      <div className="p-3 bg-gray-50 rounded-full">
+                        <BookOpen className="text-blue-700" size={28} />
+                      </div>
+                    )}
+                    {stat.icon == "Admission" && (
+                      <div className="p-3 bg-gray-50 rounded-full">
+                        <UserPlus2 className="text-blue-700" size={28} />
+                      </div>
+                    )}
+                    {stat.icon == "Fee" && (
+                      <div className="p-3 bg-gray-50 rounded-full">
+                        <IndianRupeeIcon className="text-blue-700" size={28} />
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -200,10 +258,15 @@ export default function Dashboard() {
                       margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
+                      <XAxis dataKey="month" />
                       <YAxis />
                       <Tooltip />
-                      <Bar dataKey="visitors" fill="#3B82F6" />
+                      <Bar dataKey="visitors" fill="#3B82F6" name="Visitors" />
+                      <Bar
+                        dataKey="enquiries"
+                        fill="#10B981"
+                        name="Enquiries"
+                      />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -232,23 +295,26 @@ export default function Dashboard() {
               <Feesection />
             </div>
           )}
-          {activeTab === "admin" && (
+          {activeTab === "enquiries" && (
             <div>
-              <AdminManagement />c
-            </div>
-          )}
-          {activeTab === "settings" && (
-            <div>
-              <Settingstab />
+              <EnquiryManagement />
             </div>
           )}
 
-          {/* {activeTab !== 'dashboard' && activeTab !== 'students' && (
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-lg font-semibold mb-2">{sidebarItems.find(item => item.value === activeTab)?.label} Module</h2>
-              <p className="text-gray-500">This module is under development.</p>
-            </div>
-          )} */}
+          {adminrankstate == "1" && (
+            <>
+              {activeTab === "admin" && (
+                <div>
+                  <AdminManagement />
+                </div>
+              )}
+              {activeTab === "settings" && (
+                <div>
+                  <Settingstab />
+                </div>
+              )}
+            </>
+          )}
         </main>
       </div>
     </div>
