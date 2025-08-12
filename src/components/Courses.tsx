@@ -223,7 +223,6 @@ export default function CoursesManagement() {
       setFilteredCourses(response.data.payload || []);
     } catch (error) {
       console.error("Error fetching courses:", error);
-      toast.error("Failed to load courses");
     } finally {
       setIsLoading(false);
     }
@@ -707,7 +706,7 @@ export default function CoursesManagement() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Discounted Price <span className="text-red-500">*</span>
+                  Selling Price <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"

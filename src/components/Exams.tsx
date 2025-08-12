@@ -19,8 +19,10 @@ import _ from "lodash";
 import * as XLSX from "xlsx";
 import axios from "axios";
 import { useSelector } from "react-redux";
-import { toast } from "react-toastify";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import { formatToDDMMYYYY } from "@/util/DateConverter";
+import CertificateGenerationModal from "./Certificategenerationloader";
 
 interface Option {
   id: string;
@@ -50,7 +52,7 @@ export default function ExamsManagement() {
   // State management
   const [exams, setExams] = useState<Exams>([]);
   const [filteredExams, setFilteredExams] = useState<Exams>([]);
-  
+
   const [showExcelPreview, setShowExcelPreview] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [examsPerPage] = useState(5);
@@ -69,10 +71,13 @@ export default function ExamsManagement() {
     questions: [] as Question[],
     status: "active",
   });
+  const [examloading, setExamloading] = useState(false);
+  const [isgeneratingcertificate, setISGeneratingCertificate] = useState(false);
 
   const admindbstate = useSelector((state: any) => state.admin.db);
 
   const LoadData = useCallback(async () => {
+    setExamloading(true);
     try {
       const response = await axios.get(
         `${process.env.NEXT_PUBLIC_API_URL}getexams`,
@@ -85,6 +90,8 @@ export default function ExamsManagement() {
       setFilteredExams(response.data.payload);
     } catch (error) {
       console.error("Error fetching students:", error);
+    } finally {
+      setExamloading(false);
     }
   }, [admindbstate]);
 
@@ -127,7 +134,7 @@ export default function ExamsManagement() {
           correct: row.correct || "",
         };
       });
- // Store raw data for preview
+      // Store raw data for preview
       setNewExam((prev) => ({
         ...prev,
         questions: questions,
@@ -228,7 +235,6 @@ export default function ExamsManagement() {
     });
   };
 
-  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -242,35 +248,102 @@ export default function ExamsManagement() {
         }
       );
 
+      // Show toast
       toast.success(response.data.payload?.message);
 
-      LoadData();
+      // Refresh data
+      await LoadData();
+
+      // Delay to allow toast to render
+      setTimeout(() => {
+        setShowAddForm(false);
+        setShowExcelPreview(false);
+        setNewExam({
+          exam_name: "",
+          questions: [],
+          status: "active",
+        });
+      }, 1500);
     } catch (error) {
       console.error(error);
 
-      if (error.response.data?.message) {
+      if (error.response?.data?.message) {
         toast.error(error.response.data.message);
       } else {
-        toast.error("Something Went Wrong");
+        toast.error("Something went wrong");
       }
     } finally {
-      setNewExam({
-        exam_name: "",
-        questions: [],
-        status: "active",
-      });
       setIsLoading(false);
-      setShowAddForm(false);
-    
-      setShowExcelPreview(false);
     }
   };
 
-  
+  const generateCertificate = async (studentsArray, exam_id) => {
+    setISGeneratingCertificate(true);
+    try {
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}generatecertificate`,
+        {
+          students: studentsArray,
+          exam_id: exam_id,
+          db: admindbstate,
+        }
+      );
+
+      toast.success("Certificates generated successfully");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to generate certificates");
+    } finally {
+      setISGeneratingCertificate(false);
+    }
+  };
+
+  const Spinner = ({ size, className = "" }) => (
+    <svg
+      className={`animate-spin h-${size} w-${size} text-blue-500 ${className}`}
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="4"
+      ></circle>
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+      ></path>
+    </svg>
+  );
+
   return (
     <div className="bg-white rounded-lg shadow-sm p-6">
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
+
       <div className="flex justify-between items-center mb-6">
+        {examloading && (
+          <div className="absolute left-0 w-full top-[30vh] flex justify-center items-center">
+            <Spinner size={20} />
+          </div>
+        )}
         <h2 className="text-xl font-semibold">Exams Management</h2>
+
         <div className="flex items-center space-x-3">
           <div className="relative">
             <input
@@ -303,14 +376,6 @@ export default function ExamsManagement() {
           </button>
         </div>
       </div>
-
-      {/* Success Message */}
-      {successMessage && (
-        <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg flex items-center">
-          <CheckCircle size={20} className="mr-2" />
-          {successMessage}
-        </div>
-      )}
 
       {/* Exams Table */}
       <div className="overflow-x-auto">
@@ -351,9 +416,7 @@ export default function ExamsManagement() {
                   )}
                 </div>
               </th>
-              <th
-                className="py-2 px-4 border-b cursor-pointer"
-              >
+              <th className="py-2 px-4 border-b cursor-pointer">
                 <div className="flex items-center">
                   <span>Created Date</span>
                 </div>
@@ -363,9 +426,7 @@ export default function ExamsManagement() {
                   <span>Password</span>
                 </div>
               </th>
-              <th
-                className="py-2 px-4 border-b cursor-pointer"
-              >
+              <th className="py-2 px-4 border-b cursor-pointer">
                 <div className="flex items-center">
                   <span>Status</span>
                 </div>
@@ -457,14 +518,14 @@ export default function ExamsManagement() {
 
       {/* Add Exam Form (Modal) */}
       {showAddForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-4xl">
+        <div className="fixed inset-0   bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white shadow-2xl border-2 border-blue-500 rounded-lg p-6 w-full max-w-4xl">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Create New Exam</h3>
               <button
                 onClick={() => {
                   setShowAddForm(false);
-                
+
                   setShowExcelPreview(false);
                 }}
                 className="text-gray-500 hover:text-gray-700"
@@ -656,17 +717,30 @@ export default function ExamsManagement() {
                   size={18}
                 />
               </div>
-              
+
+              <button
+                className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 text-sm"
+                onClick={() => {
+                  const students = filteredParticipants.map(
+                    (p) => p.student_id
+                  );
+                  console.log(students);
+
+                  generateCertificate(students, currentExam.exam.exam_id);
+                }}
+              >
+                Generate All Certificates
+              </button>
             </div>
 
             <div className="overflow-x-auto">
-              <table className="min-w-full bg-white border border-gray-200">
+              <table className="min-w-full mt-4 bg-white border border-gray-200">
                 <thead>
                   <tr className="bg-gray-50">
                     <th className="py-2 px-4 border-b">Student ID</th>
                     <th className="py-2 px-4 border-b">Name</th>
                     <th className="py-2 px-4 border-b">Score</th>
-                    
+                    <th className="py-2 px-4 border-b">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -690,8 +764,19 @@ export default function ExamsManagement() {
                             )?.score ?? "N/A"
                           : "N/A"}
                       </td>
-
-                    
+                      <td className="py-3 px-4 border-b">
+                        <button
+                          className="text-blue-600 hover:text-blue-800 text-sm"
+                          onClick={() =>
+                            generateCertificate(
+                              participant.student_id,
+                              currentExam.exam.exam_id
+                            )
+                          }
+                        >
+                          Generate Certificate
+                        </button>
+                      </td>
                     </tr>
                   ))}
                   {filteredParticipants.length === 0 && (
@@ -717,6 +802,7 @@ export default function ExamsManagement() {
               </button>
             </div>
           </div>
+          {isgeneratingcertificate && <CertificateGenerationModal />}
         </div>
       )}
     </div>

@@ -14,6 +14,12 @@ import {
   UserPlusIcon,
   IndianRupeeIcon,
   UserPlus2,
+  Award,
+  Search,
+  Eye,
+  Printer,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import {
   BarChart,
@@ -38,11 +44,15 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { setdb, setEmail, setRank } from "@/slices/adminSlice";
 import { useRouter } from "next/navigation";
+import Certificate from "@/components/Certificate";
+import PrintCertificate from "@/components/PrintCertificate";
 
 export default function Dashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [isLoading, setIsLoading] = useState(false);
+  const [certificateDropdownOpen, setCertificateDropdownOpen] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -55,9 +65,7 @@ export default function Dashboard() {
   const router = useRouter();
 
   const adminemailstate = useSelector((state: any) => state.admin.email);
-
   const adminrankstate = useSelector((state: any) => state.admin.rank);
-
   const admindbstate = useSelector((state: any) => state.admin.db);
 
   const sidebarItems = [
@@ -81,6 +89,19 @@ export default function Dashboard() {
           },
         ]
       : []),
+  ];
+
+  const certificateItems = [
+    {
+      icon: <Eye size={16} />,
+      label: "View / Search Certificates",
+      value: "view-certificates",
+    },
+    {
+      icon: <Printer size={16} />,
+      label: "Print Certificates",
+      value: "print-certificates",
+    },
   ];
 
   // Load open enquiries data
@@ -123,6 +144,13 @@ export default function Dashboard() {
     }
   }, [activeTab, LoadData]);
 
+  const handleCertificateClick = (value: string) => {
+    setActiveTab(value);
+    if (!isSidebarOpen) {
+      setCertificateDropdownOpen(false);
+    }
+  };
+
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
@@ -162,20 +190,64 @@ export default function Dashboard() {
               </div>
             </div>
           ))}
-        </div>
 
-        <div className="absolute bottom-0 w-full p-4 border-t">
-          <div
-            onClick={() => {
-              dispatch(setRank(""));
-              dispatch(setdb(""));
-              dispatch(setEmail(""));
-              router.push("/");
-            }}
-            className="flex items-center cursor-pointer text-red-500 hover:bg-red-50 px-4 py-2 rounded-md"
-          >
-            <LogOut size={20} />
-            {isSidebarOpen && <span className="ml-3 text-sm">Logout</span>}
+          {/* Certificate Dropdown */}
+          <div>
+            <div
+              onClick={() => {
+                if (isSidebarOpen) {
+                  setCertificateDropdownOpen(!certificateDropdownOpen);
+                } else {
+                  setCertificateDropdownOpen(true);
+                  setActiveTab("view-certificates");
+                }
+              }}
+              className={`flex items-center px-4 py-3 cursor-pointer transition-colors ${
+                activeTab.includes("certificate")
+                  ? "bg-blue-50 text-blue-600"
+                  : "hover:bg-gray-100"
+              }`}
+            >
+              <div className="flex items-center justify-between w-full">
+                <div className="flex items-center">
+                  <Award size={20} />
+                  {isSidebarOpen && (
+                    <span className="ml-3 text-sm">Certificates</span>
+                  )}
+                </div>
+                {isSidebarOpen && (
+                  <div className="transition-transform duration-200">
+                    {certificateDropdownOpen ? (
+                      <ChevronDown size={16} />
+                    ) : (
+                      <ChevronRight size={16} />
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Dropdown Items */}
+            {certificateDropdownOpen && isSidebarOpen && (
+              <div className="bg-gray-50">
+                {certificateItems.map((item) => (
+                  <div
+                    key={item.value}
+                    onClick={() => handleCertificateClick(item.value)}
+                    className={`flex items-center px-8 py-2 cursor-pointer transition-colors text-sm ${
+                      activeTab === item.value
+                        ? "bg-blue-100 text-blue-700"
+                        : "hover:bg-gray-100"
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      {item.icon}
+                      <span className="ml-3">{item.label}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -187,21 +259,52 @@ export default function Dashboard() {
         } transition-all duration-300`}
       >
         {/* Header */}
+        {/* Header with dropdown */}
         <header className="bg-white shadow-sm px-4 py-2">
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-semibold text-gray-800">
-              {sidebarItems.find((item) => item.value === activeTab)?.label ||
-                "Dashboard"}
+              {activeTab === "view-certificates" &&
+                "View / Search Certificates"}
+              {activeTab === "print-certificates" && "Print Certificates"}
+              {!activeTab.includes("certificate") &&
+                (sidebarItems.find((item) => item.value === activeTab)?.label ||
+                  "Dashboard")}
             </h1>
-            <div className="flex items-center">
-              <div className="flex flex-col gap-2 items-end space-x-2">
-                <div className="w-8 h-8 text-xl rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold">
-                  {adminemailstate.slice(0, 1)}
-                </div>
-                <div className="hidden md:block">
-                  {/* <p className="text-sm font-medium">{adminemailstate}</p> */}
-                  <p className="text-xs text-gray-500">{adminemailstate}</p>
-                </div>
+            <div className="flex items-center gap-4">
+              <div className="relative group">
+                <button
+                  onClick={() => setLogoutOpen(true)}
+                  className="flex items-center gap-2"
+                >
+                  <div className="w-8 h-8 text-xl rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold">
+                    {adminemailstate.slice(0, 1)}
+                  </div>
+                  <ChevronDown size={16} className="hidden md:block" />
+                </button>
+
+                {/* Dropdown menu */}
+                {logoutOpen && (
+                  <div
+                    className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 "
+                    onMouseLeave={() => setLogoutOpen(false)}
+                  >
+                    <div className="px-4 py-2 text-sm text-gray-700 border-b">
+                      {adminemailstate}
+                    </div>
+                    <button
+                      onClick={() => {
+                        dispatch(setRank(""));
+                        dispatch(setdb(""));
+                        dispatch(setEmail(""));
+                        router.push("/");
+                      }}
+                      className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50"
+                    >
+                      <LogOut size={16} />
+                      <span>Logout</span>
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -285,19 +388,35 @@ export default function Dashboard() {
               <ExamsManagement />
             </div>
           )}
+
           {activeTab === "courses" && (
             <div>
               <CoursesManagement />
             </div>
           )}
+
           {activeTab === "fees" && (
             <div>
               <Feesection />
             </div>
           )}
+
           {activeTab === "enquiries" && (
             <div>
               <EnquiryManagement />
+            </div>
+          )}
+
+          {/* Certificate Management Sections */}
+          {activeTab === "view-certificates" && (
+            <div>
+              <Certificate />
+            </div>
+          )}
+
+          {activeTab === "print-certificates" && (
+            <div>
+              <PrintCertificate />
             </div>
           )}
 

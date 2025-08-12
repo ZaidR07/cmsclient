@@ -3,10 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import {
   Search,
   Plus,
-  ArrowUp,
-  ArrowDown,
   X,
-  CheckCircle,
   Edit,
   Trash2,
 } from "lucide-react";
