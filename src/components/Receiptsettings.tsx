@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { toast, ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
 import { useSelector } from "react-redux";
 
 const Receiptsettings = () => {
@@ -552,7 +552,6 @@ const Receiptsettings = () => {
           </button>
         </div>
       </div>
-      <ToastContainer />
     </div>
   );
 };

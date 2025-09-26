@@ -19,8 +19,7 @@ import _ from "lodash";
 import * as XLSX from "xlsx";
 import axios from "axios";
 import { useSelector } from "react-redux";
-import { toast, ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { toast } from "react-toastify";
 import { formatToDDMMYYYY } from "@/util/DateConverter";
 import CertificateGenerationModal from "./Certificategenerationloader";
 
@@ -44,6 +43,7 @@ interface Exam {
   password: string;
   created_date: string;
   participants?: any[];
+  descriptions?: string[];
 }
 
 type Exams = Exam[];
@@ -70,6 +70,7 @@ export default function ExamsManagement() {
     exam_name: "",
     questions: [] as Question[],
     status: "active",
+    descriptions: [""] as string[],
   });
   const [examloading, setExamloading] = useState(false);
   const [isgeneratingcertificate, setISGeneratingCertificate] = useState(false);
@@ -239,11 +240,17 @@ export default function ExamsManagement() {
     e.preventDefault();
     setIsLoading(true);
 
+    // Filter out empty descriptions
+    const filteredDescriptions = newExam.descriptions.filter(desc => desc.trim() !== "");
+
     try {
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}createexam`,
         {
-          payload: newExam,
+          payload: {
+            ...newExam,
+            descriptions: filteredDescriptions
+          },
           db: admindbstate,
         }
       );
@@ -262,6 +269,7 @@ export default function ExamsManagement() {
           exam_name: "",
           questions: [],
           status: "active",
+          descriptions: [""],
         });
       }, 1500);
     } catch (error) {
@@ -323,19 +331,6 @@ export default function ExamsManagement() {
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-6">
-      <ToastContainer
-        position="top-right"
-        autoClose={5000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="light"
-      />
-
       <div className="flex justify-between items-center mb-6">
         {examloading && (
           <div className="absolute left-0 w-full top-[30vh] flex justify-center items-center">
@@ -518,8 +513,8 @@ export default function ExamsManagement() {
 
       {/* Add Exam Form (Modal) */}
       {showAddForm && (
-        <div className="fixed inset-0   bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white shadow-2xl border-2 border-blue-500 rounded-lg p-6 w-full max-w-4xl">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white shadow-2xl border-2 border-blue-500 rounded-lg p-6 w-full max-w-4xl my-8 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Create New Exam</h3>
               <button
@@ -535,34 +530,88 @@ export default function ExamsManagement() {
             </div>
 
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Exam Name
-                </label>
-                <input
-                  type="text"
-                  name="exam_name"
-                  value={newExam.exam_name}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  placeholder="Enter exam name"
-                />
+              {/* Exam Name and Upload Questions side by side for lg and xl, stacked for 2xl */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Exam Name
+                  </label>
+                  <input
+                    type="text"
+                    name="exam_name"
+                    value={newExam.exam_name}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    placeholder="Enter exam name"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Upload Questions (Excel)
+                  </label>
+                  <input
+                    type="file"
+                    accept=".xlsx, .xls"
+                    onChange={handleFileUpload}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Excel format should have columns: qno, question, option1,
+                    option2, option3, option4, correct
+                  </p>
+                </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Upload Questions (Excel)
+                  Descriptions
                 </label>
-                <input
-                  type="file"
-                  accept=".xlsx, .xls"
-                  onChange={handleFileUpload}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Excel format should have columns: qno, question, option1,
-                  option2, option3, option4, correct
-                </p>
+                {newExam.descriptions.map((desc, index) => (
+                  <div key={index} className="flex items-center mb-2">
+                    <input
+                      type="text"
+                      value={desc}
+                      onChange={(e) => {
+                        const newDescriptions = [...newExam.descriptions];
+                        newDescriptions[index] = e.target.value;
+                        setNewExam({
+                          ...newExam,
+                          descriptions: newDescriptions,
+                        });
+                      }}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
+                      placeholder={`Description ${index + 1}`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newDescriptions = [...newExam.descriptions];
+                        newDescriptions.splice(index, 1);
+                        setNewExam({
+                          ...newExam,
+                          descriptions: newDescriptions.length > 0 ? newDescriptions : [""],
+                        });
+                      }}
+                      className="ml-2 p-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewExam({
+                      ...newExam,
+                      descriptions: [...newExam.descriptions, ""],
+                    });
+                  }}
+                  className="flex items-center text-blue-500 hover:text-blue-700"
+                >
+                  <Plus size={16} className="mr-1" />
+                  Add Description
+                </button>
               </div>
 
               {showExcelPreview && (

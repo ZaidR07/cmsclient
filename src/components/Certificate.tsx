@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Search, Eye, Trash2, Download, FileText, AlertCircle, X } from 'lucide-react';
 import axios from 'axios';
+import { useSelector } from "react-redux";
+
 
 const Certificate = () => {
   const [certificateId, setCertificateId] = useState('');
@@ -9,6 +11,10 @@ const Certificate = () => {
   const [error, setError] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  //@ts-ignore
+  const admindbstate = useSelector((state) => state.admin.db);
+
 
   const handleSearch = async () => {
     if (!certificateId.trim()) {
@@ -23,7 +29,7 @@ const Certificate = () => {
     try {
       const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}seecertificate`, {
         certificateId: certificateId.trim(),
-        db: 'aicidb'
+        db: admindbstate
       });
 
       if (response.data && response.data.certificateUrl) {
@@ -41,7 +47,7 @@ const Certificate = () => {
 
   const handleDelete = async () => {
     setDeleting(true);
-    
+
     try {
       const response = await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}deletecertificate`, {
         data: {
@@ -88,7 +94,7 @@ const Certificate = () => {
           <FileText className="text-blue-600" size={24} />
           Search Certificate
         </h2>
-        
+
         <div className="flex items-center gap-4 mb-4">
           <div className="flex-1">
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -169,7 +175,7 @@ const Certificate = () => {
                 className="border-0"
                 title="Certificate PDF"
               />
-              
+
             </div>
           </div>
         </div>
@@ -188,7 +194,7 @@ const Certificate = () => {
                 <X size={20} />
               </button>
             </div>
-            
+
             <div className="mb-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
@@ -199,12 +205,12 @@ const Certificate = () => {
                   <p className="text-sm text-gray-600">Certificate ID: {certificateId}</p>
                 </div>
               </div>
-              
+
               <p className="text-gray-600">
                 Are you sure you want to delete this certificate? This action cannot be undone.
               </p>
             </div>
-            
+
             <div className="flex gap-3">
               <button
                 onClick={() => setShowDeleteConfirm(false)}

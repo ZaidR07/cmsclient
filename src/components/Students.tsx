@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import _ from "lodash";
 import axios from "axios";
-import { toast, ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
 import { useSelector } from "react-redux";
 import ExcelUpload from "./ExcelUpload";
 import { handleExcelDataUpload } from "@/util/ExcelUpload";
@@ -47,7 +47,7 @@ export default function StudentsManagement() {
     mobile: "",
     altnumber: "",
     email: "",
-    course: "",
+    course: [],
     date: new Date().toISOString().split("T")[0],
     totalPayment: 0,
     discount: 0,
@@ -104,7 +104,10 @@ export default function StudentsManagement() {
       // Apply course filter
       if (courseFilter) {
         filtered = filtered.filter(
-          (student) => student.course === courseFilter
+          (student) =>
+            Array.isArray(student.course)
+              ? student.course.includes(courseFilter)
+              : student.course == courseFilter
         );
       }
 
@@ -123,8 +126,8 @@ export default function StudentsManagement() {
 
   // Handle column sorting
   const handleSort = (column) => {
-    if (sortColumn === column) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    if (sortColumn == column) {
+      setSortDirection(sortDirection == "asc" ? "desc" : "asc");
     } else {
       setSortColumn(column);
       setSortDirection("asc");
@@ -189,7 +192,7 @@ export default function StudentsManagement() {
 
   // Update installments when balance or payment plan changes
   useEffect(() => {
-    if (paymentPlan === "installment" && newStudent.balance > 0) {
+    if (paymentPlan == "installment" && newStudent.balance > 0) {
       // Calculate equal installment amounts
       const installmentAmount = Math.floor(
         newStudent.balance / numberOfInstallments
@@ -202,7 +205,7 @@ export default function StudentsManagement() {
         (_, index) => ({
           installmentno: index + 1,
           amount:
-            index === 0 ? installmentAmount + remainder : installmentAmount,
+            index == 0 ? installmentAmount + remainder : installmentAmount,
           dueDate:
             calculateDueDates(installmentFrequency, numberOfInstallments)[
               index
@@ -213,7 +216,7 @@ export default function StudentsManagement() {
       setInstallments(calculatedInstallments);
     } else {
       // If not in installment mode or no balance, reset to single installment
-      setInstallments([{ installmentno: 1, amount: 0, dueDate: "" }]);
+      setInstallments([{ amount: 0, dueDate: "" }]);
     }
   }, [
     newStudent.balance,
@@ -230,11 +233,11 @@ export default function StudentsManagement() {
 
     for (let i = 0; i < count; i++) {
       const newDate = new Date(date);
-      if (frequency === "monthly") {
+      if (frequency == "monthly") {
         newDate.setMonth(date.getMonth() + i + 1);
-      } else if (frequency === "bimonthly") {
+      } else if (frequency == "bimonthly") {
         newDate.setMonth(date.getMonth() + (i + 1) * 2);
-      } else if (frequency === "quarterly") {
+      } else if (frequency == "quarterly") {
         newDate.setMonth(date.getMonth() + (i + 1) * 3);
       }
       dates.push(newDate.toISOString().split("T")[0]);
@@ -243,10 +246,10 @@ export default function StudentsManagement() {
   };
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
 
     // Add validation for mobile and altnumber fields
-    if (name === "mobile" || name === "altnumber") {
+    if (name == "mobile" || name == "altnumber") {
       // Only allow numbers and limit to 10 digits
       const numericValue = value.replace(/\D/g, "").slice(0, 10);
       setNewStudent({
@@ -256,8 +259,8 @@ export default function StudentsManagement() {
       return;
     }
 
-    if (name === "adhaar") {
-      // Only allow numbers and limit to 10 digits
+    if (name == "adhaar") {
+      // Only allow numbers and limit to 12 digits
       const numericValue = value.replace(/\D/g, "").slice(0, 12);
       setNewStudent({
         ...newStudent,
@@ -266,28 +269,47 @@ export default function StudentsManagement() {
       return;
     }
 
-    if (name == "course") {
-      const selectedCourse = courses.find((item) => item.course_id == value);
-      setNewStudent({
-        ...newStudent,
-        [name]: value,
-        totalPayment: selectedCourse ? selectedCourse.discountedprice : 0,
+    if (name == "course" && type == "checkbox") {
+      // Handle multiple course selection
+      const courseId = parseInt(value);
+      setNewStudent((prev) => {
+        let updatedCourses;
+        if (checked) {
+          // Add course to array if checked
+          updatedCourses = [...prev.course, courseId];
+        } else {
+          // Remove course from array if unchecked
+          updatedCourses = prev.course.filter((id) => id !== courseId);
+        }
+
+        // Calculate total payment based on selected courses
+        const totalPayment = updatedCourses.reduce((sum, id) => {
+          const course = courses.find((c) => c.course_id == id);
+          return sum + (course ? parseFloat(course.discountedprice) || 0 : 0);
+        }, 0);
+
+        return {
+          ...prev,
+          course: updatedCourses,
+          totalPayment: totalPayment,
+          balance: Math.max(totalPayment - prev.discount - prev.payment, 0),
+        };
       });
     } else if (
-      name === "totalPayment" ||
-      name === "discount" ||
-      name === "payment"
+      name == "totalPayment" ||
+      name == "discount" ||
+      name == "payment"
     ) {
       const total =
-        name === "totalPayment"
+        name == "totalPayment"
           ? parseFloat(value) || 0
           : parseFloat(newStudent.totalPayment) || 0;
       const discount =
-        name === "discount"
+        name == "discount"
           ? parseFloat(value) || 0
           : parseFloat(newStudent.discount) || 0;
       const payment =
-        name === "payment"
+        name == "payment"
           ? parseFloat(value) || 0
           : parseFloat(newStudent.payment) || 0;
 
@@ -296,15 +318,16 @@ export default function StudentsManagement() {
         [name]: parseFloat(value) || 0,
         balance: Math.max(total - discount - payment, 0),
       });
-    } else if (name === "paymentmode") {
+    } else if (name == "paymentmode") {
       setNewStudent({
         ...newStudent,
         [name]: value,
-        chequeNo: value === "Cheque" ? newStudent.chequeNo || "" : "",
+        chequeNo: value == "Cheque" ? newStudent.chequeNo || "" : "",
         otherPaymentMode:
-          value === "Other" ? newStudent.otherPaymentMode || "" : "",
+          value == "Other" ? newStudent.otherPaymentMode || "" : "",
       });
-    } else {
+    } else if (name !== "course") {
+      // Skip single course selection handling
       setNewStudent({
         ...newStudent,
         [name]: value,
@@ -364,9 +387,9 @@ export default function StudentsManagement() {
       errors.email = "Email is required";
       isValid = false;
     }
-    if (!newStudent.course.trim()) {
+    if (!newStudent.course || newStudent.course.length == 0) {
       //@ts-expect-error err
-      errors.course = "Course is required";
+      errors.course = "At least one course is required";
       isValid = false;
     }
     if (!newStudent.payment || newStudent.payment <= 0) {
@@ -380,18 +403,18 @@ export default function StudentsManagement() {
       isValid = false;
     }
 
-    if (newStudent.paymentmode === "") {
+    if (newStudent.paymentmode == "") {
       //@ts-expect-error err
       errors.paymentmode = "Payment mode is required";
       isValid = false;
     }
-    if (newStudent.paymentmode === "Cheque" && !newStudent.chequeNo.trim()) {
+    if (newStudent.paymentmode == "Cheque" && !newStudent.chequeNo.trim()) {
       //@ts-expect-error err
       errors.chequeNo = "Cheque number is required for Cheque payment";
       isValid = false;
     }
     if (
-      newStudent.paymentmode === "Other" &&
+      newStudent.paymentmode == "Other" &&
       !newStudent.otherPaymentMode.trim()
     ) {
       //@ts-expect-error err
@@ -412,7 +435,7 @@ export default function StudentsManagement() {
   // Populating values of student
   const HandleUpdate = (id) => {
     //@ts-expect-error err
-    const filteredStudent = students?.find((item) => item.student_id === id);
+    const filteredStudent = students?.find((item) => item.student_id == id);
     if (filteredStudent) {
       setUpdate(true);
       setNewStudent({
@@ -440,10 +463,15 @@ export default function StudentsManagement() {
 
       // Add all student data to FormData
       Object.keys(newStudent).forEach((key) => {
-        if (key === "photo") {
+        if (key == "photo") {
           if (newStudent.photo) {
             formData.append("photo", newStudent.photo);
           }
+        } else if (key == "course" && Array.isArray(newStudent[key])) {
+          // Handle course array properly
+          newStudent[key].forEach((courseId) => {
+            formData.append("course", courseId);
+          });
         } else {
           formData.append(key, newStudent[key]);
         }
@@ -451,13 +479,12 @@ export default function StudentsManagement() {
 
       // Add system fields
       formData.append("folder", admindbstate);
-      formData.append("paymentPlan", paymentPlan
-                                               
-      );
+      formData.append("paymentPlan", paymentPlan);
+
       formData.append("balance", balance);
 
       // Add installments (only for installment plans)
-      if (paymentPlan === "installment") {
+      if (paymentPlan == "installment") {
         installments
           .filter((inst) => inst.amount > 0 && inst.dueDate)
           .forEach((inst, index) => {
@@ -502,7 +529,7 @@ export default function StudentsManagement() {
       mobile: "",
       altnumber: "",
       email: "",
-      course: "",
+      course: [],
       date: new Date().toISOString().split("T")[0],
       totalPayment: 0,
       discount: 0,
@@ -536,13 +563,14 @@ export default function StudentsManagement() {
     toast.error(errorMessage);
 
     // Special case: handle duplicate student IDs
-    if (error.response?.data?.code === "DUPLICATE_STUDENT") {
+    if (error.response?.data?.code == "DUPLICATE_STUDENT") {
       setFormErrors((prev) => ({
         ...prev,
         student_id: "This student ID already exists",
       }));
     }
   };
+
   const handleDelete = async () => {
     try {
       if (!deleteID) {
@@ -624,7 +652,7 @@ export default function StudentsManagement() {
       ]);
 
       // Handle students response
-      if (studentsRes.status === "fulfilled") {
+      if (studentsRes.status == "fulfilled") {
         const students = studentsRes.value.data?.payload || [];
         setStudents(students);
         setFilteredStudents(students);
@@ -635,7 +663,7 @@ export default function StudentsManagement() {
       }
 
       // Handle courses response
-      if (coursesRes.status === "fulfilled") {
+      if (coursesRes.status == "fulfilled") {
         const courses = coursesRes.value.data?.payload || [];
         setCourses(courses);
       } else {
@@ -673,7 +701,6 @@ export default function StudentsManagement() {
   return (
     <div className="bg-white  rounded-lg shadow-sm p-6">
       <div className="flex justify-end items-center mb-6">
-        
         <div className="flex items-center space-x-3">
           <div className="relative">
             <input
@@ -729,10 +756,11 @@ export default function StudentsManagement() {
                 mobile: "",
                 altnumber: "",
                 email: "",
-                course: "",
+                course: [],
                 date: new Date().toISOString().split("T")[0],
                 totalPayment: 0,
                 discount: 0,
+                remark: "",
                 payment: 0,
                 balance: 0,
                 paymentmode: "",
@@ -765,9 +793,9 @@ export default function StudentsManagement() {
               >
                 <div className="flex items-center">
                   <span>Name</span>
-                  {sortColumn === "firstName" && (
+                  {sortColumn == "firstName" && (
                     <span className="ml-1">
-                      {sortDirection === "asc" ? (
+                      {sortDirection == "asc" ? (
                         <ArrowUp size={14} />
                       ) : (
                         <ArrowDown size={14} />
@@ -822,8 +850,13 @@ export default function StudentsManagement() {
                   {` ${student.lastName}`}
                 </td>
                 <td className="py-3 px-4 border-b">
-                  {courses.find((item) => item.course_id == student.course)
-                    ?.course_name ?? "N/A"}
+                  {Array.isArray(student.course)
+                    ? student.course.map((courseId) =>
+                        courses.find((item) => item.course_id == courseId)
+                          ?.course_name
+                      ).filter(Boolean).join(", ") || "N/A"
+                    : courses.find((item) => item.course_id == student.course)
+                        ?.course_name ?? "N/A"}
                 </td>
 
                 <td className="py-3 px-4 border-b">{student.mobile}</td>
@@ -916,7 +949,7 @@ export default function StudentsManagement() {
                 </div>
               </div>
             )}
-            {currentStudents?.length === 0 && (
+            {currentStudents?.length == 0 && (
               <tr>
                 <td colSpan={9} className="py-4 text-center text-gray-500">
                   No students found.
@@ -943,7 +976,7 @@ export default function StudentsManagement() {
                 key={i}
                 onClick={() => paginate(i + 1)}
                 className={`px-3 py-1 border ${
-                  currentPage === i + 1
+                  currentPage == i + 1
                     ? "bg-blue-500 text-white"
                     : "bg-white text-gray-500"
                 } rounded`}
@@ -1032,6 +1065,9 @@ export default function StudentsManagement() {
                               altnumber: student.altnumber,
                               email: student.email,
                               address: student.address,
+                              course: Array.isArray(student.course)
+                                ? student.course
+                                : [student.course],
                             });
 
                             // Set photo preview if available
@@ -1049,12 +1085,16 @@ export default function StudentsManagement() {
                             </p>
                             <p className="text-sm text-gray-600">
                               ID: {student.student_id} | Course:{" "}
-                              {courses.find(
-                                (c) => c.course_id == student.course
-                              )?.course_name || "N/A"}
+                              {Array.isArray(student.course)
+                                ? student.course.map((courseId) =>
+                                    courses.find((c) => c.course_id == courseId)
+                                      ?.course_name
+                                  ).filter(Boolean).join(", ") || "N/A"
+                                : courses.find(
+                                    (c) => c.course_id == student.course
+                                  )?.course_name || "N/A"}
                             </p>
                           </div>
-                          
                         </div>
                       ))}
                   </div>
@@ -1217,8 +1257,7 @@ export default function StudentsManagement() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Qualification <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
+                <select
                   name="qualification"
                   value={newStudent.qualification}
                   onChange={handleInputChange}
@@ -1227,9 +1266,19 @@ export default function StudentsManagement() {
                       ? "border-red-500"
                       : "border-gray-300"
                   } rounded-md`}
-                  placeholder="Qualification"
                   required
-                />
+                >
+                  <option value="">Select Qualification</option>
+                  <option value="Below 10th">Below 10th</option>
+                  <option value="10th(ssc)">10th(ssc)</option>
+                  <option value="Above 10th">Above 10th</option>
+                  <option value="Below 12th">Below 12th</option>
+                  <option value="12th(hsc)">12th(hsc)</option>
+                  <option value="Above 12th">Above 12th</option>
+                  <option value="Under Graduate">Under Graduate</option>
+                  <option value="Graduate">Graduate</option>
+                  <option value="Post Graduate">Post Graduate</option>
+                </select>
                 {formErrors.qualification && (
                   <p className="text-xs text-red-500 mt-1">
                     {formErrors.qualification}
@@ -1306,6 +1355,39 @@ export default function StudentsManagement() {
                 )}
               </div>
 
+              {/* Course Selection - Multiple with Checkboxes */}
+              <div className="md:col-span-3 mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Courses * (Select at least one)
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-40 overflow-y-auto border rounded-lg p-2">
+                  {courses.map((course) => (
+                    <div key={course.course_id} className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id={`course-${course.course_id}`}
+                        name="course"
+                        value={course.course_id}
+                        checked={newStudent.course.includes(course.course_id)}
+                        onChange={handleInputChange}
+                        className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <label
+                        htmlFor={`course-${course.course_id}`}
+                        className="ml-2 text-sm text-gray-700"
+                      >
+                        {course.course_name} (₹{course.discountedprice})
+                      </label>
+                    </div>
+                  ))}
+                </div>
+                {formErrors.course && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {formErrors.course}
+                  </p>
+                )}
+              </div>
+
               <div className="md:col-span-3">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Address <span className="text-red-500">*</span>
@@ -1324,35 +1406,6 @@ export default function StudentsManagement() {
                 {formErrors.address && (
                   <p className="text-xs text-red-500 mt-1">
                     {formErrors.address}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Course <span className="text-red-500">*</span>
-                </label>
-                <select
-                  className={`w-full px-2 py-2 border ${
-                    formErrors.course ? "border-red-500" : "border-gray-300"
-                  } rounded-md`}
-                  placeholder="Course Name"
-                  onChange={handleInputChange}
-                  required
-                  name="course"
-                  value={newStudent.course}
-                  disabled={update}
-                >
-                  <option value="">Select a Course</option>
-                  {courses?.length > 0 &&
-                    courses.map((item, index) => (
-                      <option key={index} value={item.course_id}>
-                        {item.course_name}
-                      </option>
-                    ))}
-                </select>
-                {formErrors.course && (
-                  <p className="text-xs text-red-500 mt-1">
-                    {formErrors.course}
                   </p>
                 )}
               </div>
@@ -1455,7 +1508,7 @@ export default function StudentsManagement() {
                   </p>
                 )}
               </div>
-              {newStudent.paymentmode === "Cheque" && (
+              {newStudent.paymentmode == "Cheque" && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Cheque Number <span className="text-red-500">*</span>
@@ -1479,7 +1532,7 @@ export default function StudentsManagement() {
                   )}
                 </div>
               )}
-              {newStudent.paymentmode === "Other" && (
+              {newStudent.paymentmode == "Other" && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Other Payment Mode <span className="text-red-500">*</span>
@@ -1547,7 +1600,7 @@ export default function StudentsManagement() {
                   <input
                     type="radio"
                     name="paymentPlan"
-                    checked={paymentPlan === "full"}
+                    checked={paymentPlan == "full"}
                     onChange={() => setPaymentPlan("full")}
                     className="mr-2"
                     disabled={update || newStudent.balance > 0}
@@ -1558,7 +1611,7 @@ export default function StudentsManagement() {
                   <input
                     type="radio"
                     name="paymentPlan"
-                    checked={paymentPlan === "installment"}
+                    checked={paymentPlan == "installment"}
                     onChange={() => setPaymentPlan("installment")}
                     className="mr-2"
                     disabled={update}
@@ -1567,7 +1620,7 @@ export default function StudentsManagement() {
                 </label>
               </div>
 
-              {paymentPlan === "installment" && (
+              {paymentPlan == "installment" && (
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium mb-1">
@@ -1631,7 +1684,7 @@ export default function StudentsManagement() {
                           onChange={(e) => {
                             setInstallments((prev) =>
                               prev.map((inst, i) =>
-                                i === index
+                                i == index
                                   ? {
                                       ...inst,
                                       amount: parseFloat(e.target.value) || 0,
@@ -1655,7 +1708,7 @@ export default function StudentsManagement() {
                             onChange={(e) => {
                               setInstallments((prev) =>
                                 prev.map((inst, i) =>
-                                  i === index
+                                  i == index
                                     ? { ...inst, dueDate: e.target.value }
                                     : inst
                                 )
@@ -1721,7 +1774,6 @@ export default function StudentsManagement() {
           </div>
         </div>
       )}
-      <ToastContainer />
     </div>
   );
 }
